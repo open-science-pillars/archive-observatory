@@ -11,8 +11,10 @@ Reads the rules seed, sweeps each named provider's collections (public
 CMR, no credentials, Client-Id set, throttled), tallies per-provider
 pass rates per rule, and emits the aggregate report the publication
 policy allows to be public plus a per-provider detail file the policy
-routes privately. Deterministic, no LLM anywhere (register R5); an
-incremental mode keys on revision dates to stay polite (register R4).
+routes privately. Sweeps are throttled by construction: Client-Id on every request,
+one second between pages, bounded pages, monthly cadence (register
+R4). An incremental mode keyed on revision dates is future work,
+deliberately not claimed as present behavior.
 
 Structural rules this sweeper can check from a CMR search result alone:
 doi-present, spatial-extent-present, temporal-extent-present,
@@ -90,7 +92,13 @@ def load_rules(path: Path) -> dict:
                 print(f"WARN: rule {r['id']} binds unknown structural check {cid}",
                       file=sys.stderr)
                 continue
-            rules[r["id"]] = {"fn": STRUCTURAL[cid], "class": r["class"]}
+            cls = r["class"]
+            section = str((r.get("source") or {}).get("section", ""))
+            if cls == "MUST" and section != "verified":
+                # Register R2, enforced not intended: an unverified
+                # source citation can never surface as MUST.
+                cls = "SHOULD*"
+            rules[r["id"]] = {"fn": STRUCTURAL[cid], "class": cls}
     return rules
 
 
@@ -124,14 +132,22 @@ def tally(entries: list, rules: dict) -> dict:
 def report(provider: str, n: int, tallies: dict, out_dir: Path | None):
     today = datetime.date.today().isoformat()
     agg = [f"{provider}: {n} collections swept {today}"]
-    detail = [f"# {provider} detail (private per publication policy) {today}", ""]
+    detail = [f"# {provider} detail (private per publication policy) {today}", "",
+              "Produced by Open Science Pillars, a community project; not a "
+              "NASA, JPL, or PO.DAAC product. Delivered privately per the "
+              "publication policy.", ""]
     for rid, t in sorted(tallies.items()):
         pct = (100.0 * t["pass"] / n) if n else 0.0
         agg.append(f"  {rid:<26} [{t['class']:<6}] {t['pass']}/{n} ({pct:.1f} percent)")
         if t["fail"]:
             detail.append(f"## {rid} ({t['class']}): {len(t['fail'])} failing")
-            detail += [f"- {sn}" for sn in sorted(t["fail"])[:200]]
+            detail += [f"- `{sn}`" for sn in sorted(t["fail"])[:200]]
             detail.append("")
+    if any(v["class"] == "SHOULD*" for v in tallies.values()):
+        agg.append("  * MUST candidate held at SHOULD until its source"
+                   " citation is verified (register R2)")
+    agg.append("  Produced by Open Science Pillars, a community project;"
+               " not a NASA, JPL, or PO.DAAC product.")
     print("\n".join(agg))
     if out_dir:
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -160,7 +176,8 @@ def main() -> int:
 
     if args.selftest:
         t = tally(SELFTEST_ENTRIES, rules)
-        ok = (t["req-doi"]["pass"] == 1 and "NO_DOI" in t["req-doi"]["fail"]
+        ok = (rules["req-doi"]["class"] == "SHOULD*"
+              and t["req-doi"]["pass"] == 1 and "NO_DOI" in t["req-doi"]["fail"]
               and t["req-temporal-extent"]["pass"] == 2
               and t["req-abstract"]["pass"] == 2)
         report("SELFTEST", len(SELFTEST_ENTRIES), t, None)

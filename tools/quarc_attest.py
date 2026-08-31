@@ -67,11 +67,55 @@ def pyquarc_version() -> str:
     return vt.read_text().strip() if vt.exists() else "unknown"
 
 
+def current_revision(concept_id: str):
+    """Current CMR revision id for a collection, via public search
+    (Client-Id, no credentials). None on any failure: the attester
+    treats an unreachable revision as unverifiable, not as a match."""
+    import urllib.request
+    url = ("https://cmr.earthdata.nasa.gov/search/collections.umm_json"
+           "?concept_id=" + concept_id)
+    req = urllib.request.Request(url, headers={
+        "Client-Id": "osp-archive-observatory",
+        "User-Agent": "osp-archive-observatory"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            items = json.loads(r.read()).get("items", [])
+        return str(items[0]["meta"]["revision-id"]) if items else None
+    except Exception:
+        return None
+
+
+def revision_mismatches(records, fetch=None) -> list:
+    """Register R6: records carrying a revision_id are checked against
+    CMR now; a receipt bound to a superseded revision must not attest."""
+    fetch = fetch or current_revision
+    bad = []
+    for rec in records or []:
+        cid, rev = rec.get("concept_id"), rec.get("revision_id")
+        if not cid or rev is None:
+            continue
+        now = fetch(cid)
+        if now is not None and str(now) != str(rev):
+            bad.append(f"{cid}: receipt revision {rev}, CMR now {now}")
+    return bad
+
+
 def severity_counts(results) -> dict:
+    """Structural counts only (register R5): pyQuARC results carry a
+    valid flag per executed check, not severity strings, so the receipt
+    counts failed checks as errors, alongside CMR ingest validation
+    errors and harness errors. No serialized text is scanned; metadata
+    content can never steer the count."""
     counts = {"error": 0, "warning": 0, "info": 0}
-    text = json.dumps(results, default=str).lower()
-    for sev in counts:
-        counts[sev] = text.count(f'"{sev}"')
+    for item in results or []:
+        for field_checks in (item.get("errors") or {}).values():
+            for res in (field_checks or {}).values():
+                if isinstance(res, dict) and res.get("valid") is False:
+                    counts["error"] += 1
+        cmr = item.get("cmr_validation") or {}
+        counts["error"] += len(cmr.get("errors") or [])
+        counts["warning"] += len(cmr.get("warnings") or [])
+        counts["error"] += len(item.get("pyquarc_errors") or [])
     return counts
 
 
@@ -89,7 +133,8 @@ def run(args) -> int:
         _pqm.CONTENT_TYPE_MAP = _ctm
     if args.concept_ids:
         arc = ARC(input_concept_ids=args.concept_ids)
-        records = [{"concept_id": c} for c in args.concept_ids]
+        records = [{"concept_id": c, "revision_id": current_revision(c)}
+                   for c in args.concept_ids]
     else:
         arc = ARC(file_path=str(args.file), metadata_format=args.format)
         records = [{"file": str(args.file)}]
@@ -128,9 +173,18 @@ def attest(receipt_path: Path, max_errors: int, skip_env_checks: bool) -> int:
     if errors > max_errors:
         print(f"FAIL A3: {errors} error-severity findings exceed {max_errors}")
         return 1
-    print(f"PASS run {r.get('run_id', '?')}: pinned version, ruleset verified"
-          + ("" if not skip_env_checks else " (env check skipped)")
-          + f", errors {errors} <= {max_errors}")
+    if not skip_env_checks:
+        bad = revision_mismatches(r.get("records"))
+        if bad:
+            print("FAIL A4: record revisions no longer match CMR "
+                  "(register R6): " + "; ".join(bad))
+            return 1
+        print(f"PASS run {r.get('run_id', '?')}: pinned version, ruleset "
+              f"and record revisions verified, errors {errors} <= {max_errors}")
+    else:
+        print(f"PASS run {r.get('run_id', '?')}: receipt internally "
+              f"consistent (env and revision checks SKIPPED; never the "
+              f"badge path), errors {errors} <= {max_errors}")
     return 0
 
 
@@ -148,6 +202,19 @@ def selftest() -> int:
     worse = dict(good, counts={"error": 4, "warning": 0, "info": 0})
     p.write_text(json.dumps(worse), encoding="utf-8")
     ok = ok and attest(p, 0, skip_env_checks=True) == 1
+    crafted = [{"concept_id": "C1-X",
+                "errors": {"Collection/Abstract": {
+                    "a_check": {"valid": False, "message": ['abstract says "error" "error" "warning"']},
+                    "b_check": {"valid": True, "message": ['fine, mentions "info"']}}},
+                "cmr_validation": {"errors": [], "warnings": ["w1"]},
+                "pyquarc_errors": []}]
+    ok = ok and severity_counts(crafted) == {"error": 1, "warning": 1, "info": 0}
+    ok = ok and revision_mismatches(
+        [{"concept_id": "C1-X", "revision_id": "3"}],
+        fetch=lambda cid: "5") == ["C1-X: receipt revision 3, CMR now 5"]
+    ok = ok and revision_mismatches(
+        [{"concept_id": "C1-X", "revision_id": "3"}],
+        fetch=lambda cid: "3") == []
     print("selftest:", "PASS" if ok else "FAIL")
     return 0 if ok else 1
 

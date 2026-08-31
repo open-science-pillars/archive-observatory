@@ -11,16 +11,14 @@ jobs:
           uv run tools/sweep_providers.py data/requirements-seed.yaml --selftest
           uv run tools/quarc_attest.py --selftest
       - name: Credential-free invariant (red-team R10)
-        # Scope excludes this file: the pattern string would match its
-        # own definition line. The workflow dir is still scanned. The
-        # exclude comes AFTER the includes: GNU grep resolves
-        # include/exclude conflicts by the last matching option, so an
-        # exclude listed first is overridden for *.yml files.
+        # Tree-wide, all file types, all register patterns including
+        # token. Excluded: this file and RED-TEAM.md, whose pattern
+        # definitions self-match, and reviews/, whose verdicts quote
+        # attack language as data.
         run: |
-          ! grep -rniE "netrc|earthdata_login|EDL_|Authorization: Bearer|api[_-]?key" \
-            tools/ data/ .github/workflows/ \
-            --include="*.py" --include="*.yml" --include="*.yaml" \
-            --exclude=ci.yml
-      - name: Red-team verdict present on PRs
+          ! grep -rniE "netrc|earthdata_login|EDL_|Authorization: Bearer|api[_-]?key|token" \
+            . --exclude-dir=.git --exclude-dir=reviews \
+            --exclude=ci.yml --exclude=RED-TEAM.md
+      - name: Red-team verdict bound to this PR (red-team R9)
         if: github.event_name == 'pull_request'
-        run: test -f redteam-verdict.md
+        run: test -f "reviews/pr-${{ github.event.pull_request.number }}-redteam-verdict.md"
