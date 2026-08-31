@@ -92,6 +92,26 @@ A MUST candidate that is held at SHOULD* for want of a verified
 citation (register R2) deliberately does not break your build; only
 rules whose mandate is cited do.
 
+Exit codes are distinct on purpose, so your pipeline can tell a
+finding from a malfunction:
+
+| Code | Meaning |
+|---|---|
+| 0 | The run completed; no MUST-class rule failed, or `--fail-on-must` was not passed |
+| 1 | `--fail-on-must` was passed and a cited-mandate rule has a failing record: a finding about your metadata |
+| 2 | The tool could not do its job (no readable records, no structural rules in the seed): a malfunction, not a finding |
+
+A file that is not a UMM-C record is named on stderr and skipped
+rather than crashing the run, so one bad export never masquerades as a
+compliance failure.
+
+**Where results land.** Only a whole-provider sweep writes an
+aggregate marked publishable. `--files` and `--short-names` produce
+per-collection results by construction, so both their files carry the
+PRIVATE suffix and the scheduled workflow's publish step cannot pick
+them up. Your own drafts are yours; nothing here publishes them, and
+`sweeps/` is gitignored so a stray `git add` cannot either.
+
 **5. Prove a fix worked.** Re-run the same command after the edit and
 compare; every number the tools print is derived, and pyQuARC receipts
 carry the ruleset hash, so two runs are comparable when their

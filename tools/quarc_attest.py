@@ -108,6 +108,16 @@ def revision_check(records, fetch=None) -> dict:
     return out
 
 
+def revision_scope(records) -> str:
+    """What a full attest can honestly claim about revision binding.
+    Factored out so the wording is covered by the selftest rather than
+    living only inside a network-dependent branch (register R11)."""
+    bound = [rec for rec in (records or []) if rec.get("concept_id")]
+    return ("ruleset and record revisions verified" if bound else
+            "ruleset verified; no registered records to revision-bind "
+            "(file-based run)")
+
+
 def severity_counts(results) -> dict:
     """Structural counts only (register R5): pyQuARC results carry a
     valid flag per executed check, not severity strings, so the receipt
@@ -191,10 +201,7 @@ def attest(receipt_path: Path, max_errors: int, skip_env_checks: bool) -> int:
             print("FAIL A5: record revisions unverifiable, failing "
                   "closed (register R6): " + "; ".join(rc["unverifiable"]))
             return 1
-        bound = [rec for rec in (r.get("records") or []) if rec.get("concept_id")]
-        scope = ("ruleset and record revisions verified" if bound else
-                 "ruleset verified; no registered records to revision-bind "
-                 "(file-based run)")
+        scope = revision_scope(r.get("records"))
         print(f"PASS run {r.get('run_id', '?')}: pinned version, {scope}, "
               f"errors {errors} <= {max_errors}")
     else:
@@ -238,6 +245,13 @@ def selftest() -> int:
                         fetch=lambda cid: None)
     ok = ok and rc["unverifiable"] == ["C1-X: current revision unreachable"]
     ok = ok and revision_check([{"file": "x.json"}]) == {"mismatched": [], "unverifiable": []}
+    # Register R11: the wording this PR changed is covered here, not
+    # left inside a branch no gate reaches.
+    ok = ok and revision_scope([{"concept_id": "C1-X", "revision_id": "3"}]) \
+        == "ruleset and record revisions verified"
+    ok = ok and "no registered records to revision-bind" in \
+        revision_scope([{"file": "draft.json"}])
+    ok = ok and "no registered records to revision-bind" in revision_scope([])
     print("selftest:", "PASS" if ok else "FAIL")
     return 0 if ok else 1
 
