@@ -37,12 +37,20 @@ def emit(receipt_path: Path, provider: str, out_dir: Path) -> int:
         print(f"REFUSED: no written opt-in recorded at {optin} "
               "(publication policy, register R1); no badge is emitted.")
         return 1
+    r = json.loads(receipt_path.read_text(encoding="utf-8"))
+    # Checked before attestation so the refusal names the specific
+    # reason: a badge binds to a published collection revision, which a
+    # file-based run does not have (register R6).
+    if not any(rec.get("concept_id") for rec in (r.get("records") or [])):
+        print("REFUSED: no registered records in this receipt (register R6); "
+              "a badge binds to a published collection revision, so a "
+              "file-based run cannot produce one.")
+        return 1
     if quarc_attest.attest(receipt_path, max_errors=0,
                            skip_env_checks=False) != 0:
         print("REFUSED: full attest did not PASS (register R6); "
               "no badge is emitted.")
         return 1
-    r = json.loads(receipt_path.read_text(encoding="utf-8"))
     out_dir.mkdir(parents=True, exist_ok=True)
     for rec in r.get("records", []):
         cid = rec.get("concept_id")
@@ -83,6 +91,16 @@ def selftest() -> int:
             (tdp / "optin" / "TESTPROV.md").write_text("written opt-in\n")
             ok = ok and emit(receipt, "TESTPROV", tdp / "badges") == 1
             ok = ok and not (tdp / "badges").exists()
+            # A file-based receipt is refused before any badge work,
+            # never a silent success with an empty directory (R6).
+            filebased = tdp / "fb.json"
+            filebased.write_text(json.dumps({
+                "run_id": "t2", "pyquarc_version": quarc_attest.PINNED_VERSION,
+                "ruleset_sha256": "deadbeef",
+                "records": [{"file": "draft.json"}],
+                "counts": {"error": 0, "warning": 0, "info": 0}}))
+            ok = ok and emit(filebased, "TESTPROV", tdp / "badges2") == 1
+            ok = ok and not (tdp / "badges2").exists()
         finally:
             os.chdir(cwd)
     print("selftest:", "PASS" if ok else "FAIL")

@@ -11,7 +11,7 @@ repository root.
 
 | Tool | What it does | Credential-free |
 |---|---|---|
-| tools/sweep_providers.py | Structural sweep of a provider's collections against the rules seed; aggregate plus private detail | yes |
+| tools/sweep_providers.py | Structural checks against the rules seed, over local files, a named subset, or a whole provider | yes |
 | tools/quarc_attest.py | pyQuARC run on collections, receipt with pinned identity, deterministic attestation | yes |
 | tools/make_badge.py | Shields badge from an attested receipt; strictly opt-in | yes |
 | tools/fitness_attest.py | Can-I-use-X-for-Y verdicts against signed validity domains | yes |
@@ -24,7 +24,109 @@ same way CI does:
     uv run tools/make_badge.py --selftest
     uv run tools/fitness_attest.py --selftest
 
-## Sweep your provider
+## What has to be registered, and what does not
+
+The short answer for a data producer: **you can check metadata that
+exists only on your laptop.** Nothing has to be in CMR for the checks
+themselves, and no step here needs credentials.
+
+| What you have | Structural rules | pyQuARC deep checks | Badge |
+|---|---|---|---|
+| A draft record on disk, unpublished | yes, `--files` | yes, `run --file` | no, badges bind to a registered revision |
+| One registered collection | yes, `--short-names` | yes, `run --concept-ids` | yes, with a written opt-in |
+| Several of your collections | yes, `--short-names` | yes, several `--concept-ids` | yes, per collection |
+| A whole provider | yes, `--providers` | yes, but sweep first and target what fails | yes, per collection |
+
+One honest caveat on the deep checks: the local-file path and the
+registered path are not identical. `run --file` checks the record you
+hand it; `run --concept-ids` checks what CMR holds and additionally
+runs CMR's own ingest validation. Running both against the same ECCO
+collection on 2026-08-30 produced different error counts (12 from the
+file, 9 from the registered record), so treat a pre-publication run as
+a smoke test that finds real problems early, not as a prediction of
+what the registered record will report.
+
+## Use cases, in the order a producer meets them
+
+**1. Check a draft before anyone else sees it.** Export the record you
+are about to submit as UMM-C JSON (a bare UMM object, a `{"umm": ...}`
+item, or a search-result envelope all work) and run both tools with no
+network dependency beyond the pyQuARC install:
+
+    uv run tools/sweep_providers.py data/requirements-seed.yaml \
+        --files draft-collection.json
+    uv run tools/quarc_attest.py run --file draft-collection.json \
+        --format umm-c --receipt draft-receipt.json
+    uv run tools/quarc_attest.py attest draft-receipt.json --max-errors 0
+
+Several files at once are fine. A file that is not a UMM-C record is
+named and skipped, never guessed at. Attesting a file-based receipt
+says so plainly ("no registered records to revision-bind"), because
+there is no published revision to bind to yet.
+
+**2. Check one collection you just published.**
+
+    uv run tools/sweep_providers.py data/requirements-seed.yaml \
+        --short-names MY_COLLECTION_SHORTNAME
+    uv run tools/quarc_attest.py run --concept-ids C1234567890-PROVIDER \
+        --receipt r.json
+
+A ShortName that matches nothing registered is reported as its own
+miss rather than silently shrinking the set.
+
+**3. Check the handful you maintain.** Pass several names; the sweep
+requests one at a time, a second apart, and reports them together as
+SUBSET.
+
+    uv run tools/sweep_providers.py data/requirements-seed.yaml \
+        --short-names COLLECTION_A COLLECTION_B COLLECTION_C
+
+**4. Gate your own pipeline.** `--fail-on-must` exits 1 when any
+MUST-class rule has a failing record, so a producer's CI can block a
+submission on its own terms:
+
+    uv run tools/sweep_providers.py data/requirements-seed.yaml \
+        --files draft-collection.json --fail-on-must
+
+A MUST candidate that is held at SHOULD* for want of a verified
+citation (register R2) deliberately does not break your build; only
+rules whose mandate is cited do.
+
+Exit codes are distinct on purpose, so your pipeline can tell a
+finding from a malfunction:
+
+| Code | Meaning |
+|---|---|
+| 0 | The run completed; no MUST-class rule failed, or `--fail-on-must` was not passed |
+| 1 | `--fail-on-must` was passed and a cited-mandate rule has a failing record: a finding about your metadata |
+| 2 | The tool could not do its job (no readable records, no structural rules in the seed): a malfunction, not a finding |
+
+A file that is not a UMM-C record is named on stderr and skipped
+rather than crashing the run, so one bad export never masquerades as a
+compliance failure. Skipped records are also counted in both output
+files, and under `--fail-on-must` a run that skipped anything exits 1
+even when every rule passed: a gate cannot report green over content
+it never examined (register R12). If your draft is skipped, the
+report says how many and why, and the percentages describe only the
+records that were actually read.
+
+**Where results land.** Only a whole-provider sweep writes an
+aggregate marked publishable. `--files` and `--short-names` produce
+per-collection results by construction, so both their files carry the
+PRIVATE suffix and the scheduled workflow's publish step cannot pick
+them up. Your own drafts are yours; nothing here publishes them, and
+`sweeps/` is gitignored so a stray `git add` cannot either.
+
+**5. Prove a fix worked.** Re-run the same command after the edit and
+compare; every number the tools print is derived, and pyQuARC receipts
+carry the ruleset hash, so two runs are comparable when their
+`ruleset_sha256` matches.
+
+**6. Ask whether a product supports a claim.** That is
+tools/fitness_attest.py, further below; it answers from signed
+validity domains in a knowledge bundle rather than from the metadata.
+
+## Sweep a whole provider
 
     uv run tools/sweep_providers.py data/requirements-seed.yaml \
         --providers POCLOUD --out-dir sweeps/
