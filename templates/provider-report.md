@@ -1,4 +1,4 @@
-# Archive report: <PROVIDER> (<DATE>) [PRIVATE until the policy window closes]
+# Archive report: <PROVIDER> (<DATE>) [PRIVATE; publishes only under recorded provider opt-in]
 
 **Plain summary.** <N> collections swept against <M> rules; headline
 pass rates below. Every number carries a receipt; every rule carries its
