@@ -1,5 +1,5 @@
-# Claim-class vocabulary (kit 12). Governed like the kit 11 rules
-# seed: a closed set, extended only by steward PR with provenance;
+# Claim-class vocabulary. Governed like the requirements seed beside
+# it: a closed set, extended only by steward PR with provenance;
 # free invention of claim names silences the attester by design.
 # Subsumption is deliberately one level deep: a domain signed for an
 # umbrella covers its children, and nothing deeper is ever inferred.
@@ -32,5 +32,5 @@ provenance_tiers:
   hand-declared: the analyst asserts the declaration; the receipt says
     so plainly
   capsule-derived: the declaration was generated mechanically from a
-    capsule's actual data selection (kit 15 composition; not yet
-    available, and the attester refuses the tier until it is)
+    capsule's actual data selection (not yet available, and the
+    attester refuses the tier until it is)

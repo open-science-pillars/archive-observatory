@@ -44,7 +44,8 @@ from pathlib import Path
 # ships version.txt reading 1.2.8 (upstream never bumped the file at
 # the tag). The PEP 723 pin on the tag is the code identity; this
 # constant pins what that environment self-reports, so A1 stays a
-# meaningful drift check. Upstream issue is the Session 4 loop.
+# meaningful drift check. Reported upstream as
+# github.com/NASA-IMPACT/pyQuARC issue 370.
 PINNED_VERSION = "1.2.8"
 
 
@@ -144,7 +145,8 @@ def run(args) -> int:
     # (main.py else-clause) omits CONTENT_TYPE_MAP from its constants
     # import, so library use via concept ids raises NameError inside
     # _validate_with_cmr. Bind the name from its defining module; the
-    # pinned tag stays pinned. Upstream issue is the Session 4 loop.
+    # pinned tag stays pinned. Reported upstream as
+    # github.com/NASA-IMPACT/pyQuARC issue 369.
     import pyQuARC.main as _pqm
     from pyQuARC.code.constants import CONTENT_TYPE_MAP as _ctm
     if not hasattr(_pqm, "CONTENT_TYPE_MAP"):

@@ -89,8 +89,10 @@ submission on its own terms:
         --files draft-collection.json --fail-on-must
 
 A MUST candidate that is held at SHOULD* for want of a verified
-citation (register R2) deliberately does not break your build; only
-rules whose mandate is cited do.
+citation deliberately does not break your build; only rules whose
+mandate is cited do. (R-numbers in parentheses, here and below, name
+rows of RED-TEAM.md in this repository, where each control is written
+down with the attack it exists to stop.)
 
 Exit codes are distinct on purpose, so your pipeline can tell a
 finding from a malfunction:
@@ -106,9 +108,9 @@ rather than crashing the run, so one bad export never masquerades as a
 compliance failure. Skipped records are also counted in both output
 files, and under `--fail-on-must` a run that skipped anything exits 1
 even when every rule passed: a gate cannot report green over content
-it never examined (register R12). If your draft is skipped, the
-report says how many and why, and the percentages describe only the
-records that were actually read.
+it never examined (register R12, a row of RED-TEAM.md in this repo).
+If your draft is skipped, the report says how many and why, and the
+percentages describe only the records that were actually read.
 
 **Where results land.** Only a whole-provider sweep writes an
 aggregate marked publishable. `--files` and `--short-names` produce
@@ -182,11 +184,13 @@ badge path.
 
     uv run tools/make_badge.py r.json --provider POCLOUD
 
-Two refusals guard this, both proven by the selftest: no badge
-without a written opt-in at optin/POCLOUD.md, and no badge without a
-FULL attest PASS of the receipt in this environment. A badge that
-emits is a shields.io endpoint JSON named by collection concept id,
-with the receipt copied alongside so anyone can re-attest what the
+It refuses, and the selftest proves each refusal, when there is no
+written opt-in at optin/POCLOUD.md, when the receipt carries no
+registered records (a file-based run has no published revision to
+bind to, which is why a draft on disk cannot be badged), and when a
+FULL attest of the receipt does not PASS in this environment. A badge
+that emits is a shields.io endpoint JSON named by collection concept
+id, with the receipt copied alongside so anyone can re-attest what the
 badge claims.
 
 ## Ask can-I-use-X-for-Y
@@ -211,7 +215,7 @@ capsules exist, so no receipt implies assurance that does not exist).
 
 ## Where the trust comes from
 
-RED-TEAM.md is the eleven-row adversarial register every change is
+RED-TEAM.md is the adversarial register every change is
 reviewed against, and reviews/ holds the verdict of every PR, merged
 with the change it reviewed: what was challenged, what blocked, what
 was fixed. The publication policy (docs/publication-policy.md) binds

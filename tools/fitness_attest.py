@@ -23,8 +23,8 @@ vocabulary file data/claim-classes.yaml is the governed source):
 by a human: actor (the same trust key the whole format uses). The
 attester verifies the DECLARATION, not the analysis; the receipt
 records declaration_provenance, and only hand-declared exists until
-kit 15's capsule derivation lands (the capsule tier is refused until
-then, so a receipt can never claim assurance that does not exist).
+capsule derivation lands (the capsule tier is refused until then, so
+a receipt can never claim assurance that does not exist).
 
 Usage:
   fitness_attest.py BUNDLE_ROOT [BUNDLE_ROOT ...] --product SHORTNAME
@@ -182,7 +182,7 @@ def scope_hits(dom: dict, decl: dict, mode: str) -> bool:
 def attest(roots, decl, vocab) -> dict:
     if decl["provenance"] != HAND:
         return {"error": f"declaration provenance '{decl['provenance']}' is not "
-                         "available: capsule derivation arrives with kit 15, and "
+                         "available: capsule derivation is not built yet, and "
                          "this attester refuses to imply assurance that does not exist"}
     governing, advisory, malformed = [], [], []
     verdict = "UNADJUDICATED"
