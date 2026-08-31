@@ -3,3 +3,4 @@
 # workflow force-adds exactly the aggregate artifact it is allowed to
 # publish.
 sweeps/
+__pycache__/

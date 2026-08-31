@@ -1,8 +1,11 @@
 #!/usr/bin/env -S uv run
 # /// script
-# requires-python = ">=3.10"
-# dependencies = []
+# requires-python = ">=3.10,<3.12"
+# dependencies = ["pyQuARC @ git+https://github.com/NASA-IMPACT/pyQuARC@v1.3.0"]
 # ///
+# The dependency mirrors quarc_attest.py's pin exactly: a full attest
+# (ruleset hash, revision binding) needs the pinned pyQuARC in the
+# environment, and the badge path never runs a lesser attest.
 """Emit a shields.io endpoint badge for one attested pyQuARC receipt.
 
 The kit-2 pattern over quarc receipts, bound by register R1 and R6:
