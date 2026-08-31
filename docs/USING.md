@@ -184,11 +184,13 @@ badge path.
 
     uv run tools/make_badge.py r.json --provider POCLOUD
 
-Two refusals guard this, both proven by the selftest: no badge
-without a written opt-in at optin/POCLOUD.md, and no badge without a
-FULL attest PASS of the receipt in this environment. A badge that
-emits is a shields.io endpoint JSON named by collection concept id,
-with the receipt copied alongside so anyone can re-attest what the
+It refuses, and the selftest proves each refusal, when there is no
+written opt-in at optin/POCLOUD.md, when the receipt carries no
+registered records (a file-based run has no published revision to
+bind to, which is why a draft on disk cannot be badged), and when a
+FULL attest of the receipt does not PASS in this environment. A badge
+that emits is a shields.io endpoint JSON named by collection concept
+id, with the receipt copied alongside so anyone can re-attest what the
 badge claims.
 
 ## Ask can-I-use-X-for-Y

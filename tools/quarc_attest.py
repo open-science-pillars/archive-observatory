@@ -146,7 +146,7 @@ def run(args) -> int:
     # import, so library use via concept ids raises NameError inside
     # _validate_with_cmr. Bind the name from its defining module; the
     # pinned tag stays pinned. Reported upstream as
-# github.com/NASA-IMPACT/pyQuARC issue 369.
+    # github.com/NASA-IMPACT/pyQuARC issue 369.
     import pyQuARC.main as _pqm
     from pyQuARC.code.constants import CONTENT_TYPE_MAP as _ctm
     if not hasattr(_pqm, "CONTENT_TYPE_MAP"):

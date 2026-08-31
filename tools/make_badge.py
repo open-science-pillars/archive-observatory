@@ -11,7 +11,7 @@
 Badges follow the same shape as this project's budget-closure badge
 (github.com/open-science-pillars/ecco-budget-badge): nothing but an
 attested receipt can produce one, and a receipt alone is not enough.
-Two refusals bind it, register R1 and R6:
+It refuses on any of these, register R1 and R6:
 - R1: refuses unless the provider's written opt-in exists at
   optin/<PROVIDER>.md; badges are strictly opt-in.
 - R6: refuses unless a FULL attest of the receipt passes in this

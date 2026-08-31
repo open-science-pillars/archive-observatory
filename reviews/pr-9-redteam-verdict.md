@@ -234,3 +234,186 @@ sufficient one, and which survives only because argparse prints the two
 R1 and R6 refusal bullets directly beneath it in the same breath.
 
 Round 2 on a one-word count fix should be immediate.
+
+# Red-team verdict: PR 9 (readability cleanup), round 2
+
+VERDICT: BLOCK
+
+The round 1 finding is closed, and closed better than the finding
+asked for. Correcting "ten" to "twelve" would have reset the same trap
+for row thirteen; removing the counts retires the class. The search
+that found three instances where I had named two is the right instinct
+and it found one I had not: docs/USING.md's "eleven-row adversarial
+register", true the day it was written and stale within a day.
+
+I am blocking anyway, on the same class one notch wider. The commit
+retired count claims about the register and left two count claims about
+the badge refusals, both of them wrong right now, one in the operator's
+guide and one in the very docstring this commit was rewriting.
+
+## Round 1 finding: verified closed
+
+All three sites read accurately with no count:
+
+- README.md: "the standing adversarial register: attacks, their
+  consequences, and the designed-in mitigation for each" matches the
+  table's Attack, Consequence unmitigated and Designed-in mitigation
+  columns.
+- agents/red-team.md: "every review walks every row" is both accurate
+  and self-maintaining, and it is what I did.
+- docs/USING.md: "RED-TEAM.md is the adversarial register every change
+  is reviewed against" holds.
+
+Swept the tree for survivors, all file types outside reviews/: no count
+of rows, attacks, entries or findings about the register remains, and
+RED-TEAM.md's own preamble never carried one. reviews/ carries several,
+including my own round 1 "twelve rows" and PR 4's and PR 7's "eleven
+rows", and that is correct: a verdict is a dated record of what was
+true when the review ran, not a standing description that can go stale.
+Leaving reviews/ untouched is right for the same reason.
+
+## Finding 2 (R2): the badge refusals are counted, and the count is wrong
+
+Two sites, one class, the class this commit just retired elsewhere:
+
+- tools/make_badge.py line 14: "Two refusals bind it, register R1 and
+  R6:" followed by two bullets. This sentence was rewritten by this
+  commit; the stale count rode along into the new prose.
+- docs/USING.md line 187: "Two refusals guard this, both proven by the
+  selftest: no badge without a written opt-in at optin/POCLOUD.md, and
+  no badge without a FULL attest PASS of the receipt in this
+  environment."
+
+emit() has three refusal branches, at lines 40, 48 and 54: no written
+opt-in (R1), no registered records in the receipt (R6), and full attest
+did not PASS (R6). I ran the selftest and it prints all three, so
+USING.md's "both proven by the selftest" is doubly wrong: the selftest
+proves three, and the one it omits is the one the selftest was extended
+to cover.
+
+Attack: none required, authoring staleness again. git log -S dates it
+exactly: commit 6a9345f, the builder's response to PR 8 round 1, added
+the registered-records refusal. Before that there were two, which is
+why PR 4's verdict records "make_badge's two proven refusals" as
+verified fact. It was true when written. It stopped being true when the
+producer path landed, and nothing swept back over the prose that
+counted it.
+
+Consequence, and this is why it is worth a block rather than a note:
+docs/USING.md now contradicts itself. Its capability table tells a
+producer that a draft record on disk gets no badge, because badges bind
+to a registered revision. Its badge section tells the same producer
+that two refusals guard the path and neither of them is that one. A
+producer with a clean local record reads the section, concludes that a
+written opt-in plus a passing attest is all that stands between them
+and a badge, and finds out otherwise from a refusal message. That is
+the R2 failure mode aimed at our own guide: the artifact claims
+something the code does not do, in the document whose whole purpose is
+telling an outsider what the code does. It is also, precisely, a
+statement that was accurate when written and went stale as the thing it
+counted grew, which is the finding the steward just generalized into
+doctrine two paragraphs of prose away.
+
+Fix direction (the builder fixes, not the red team): the doctrine
+adopted this round answers it. Describe the refusals instead of
+counting them. USING.md additionally needs the third one named, because
+its own table already promises that behavior and the badge section is
+where a producer will look for it.
+
+## The round 1 notes, each verified applied
+
+- tools/quarc_attest.py: the two comments now name
+  github.com/NASA-IMPACT/pyQuARC issues 370 and 369, and the mapping is
+  right way round. I pulled both issue titles: 370 is "version.txt at
+  tag v1.3.0 still reads 1.2.8", which is the comment on
+  PINNED_VERSION, and 369 is the CONTENT_TYPE_MAP NameError, which is
+  the comment on the rebinding in run(). The claim is now checkable
+  from the tree, which was the point.
+- tools/make_badge.py: the referent is named and it resolves. I checked
+  github.com/open-science-pillars/ecco-budget-badge from here: public,
+  and its description ("Checkable ECCO budget closure: the attested
+  heat budget's portable attester, sanctioned computation, and CI
+  badge") supports the shared-trust-root claim the R6 residual makes.
+  A pointer that resolves is worth more than the one I asked for.
+- "nothing but an attested receipt can produce one, and a receipt alone
+  is not enough" kills the sufficient reading exactly. My round 1
+  closest call is closed.
+- docs/USING.md: "here and below" retires the oversell for a set of
+  two, and the R12 gloss at line 111 now self-resolves for a reader who
+  arrives there by search rather than by reading forward. Both notes
+  closed.
+- tools/fitness_attest.py: the docstring paragraph is rewrapped and I
+  confirmed it in --help output, where the lines now run 64 to 68
+  characters with no short line mid-paragraph.
+
+## Editorial defect introduced by the fix, not a register finding
+
+tools/quarc_attest.py line 149 sits at column 0, inside the body of
+run(), where the continuation of an indented comment block should be:
+
+    # pinned tag stays pinned. Reported upstream as
+# github.com/NASA-IMPACT/pyQuARC issue 369.
+
+It is the only column-0 comment inside any function body in the file. I
+checked the consequences rather than assuming: Python exempts comment
+lines from indentation entirely, the file parses, the AST is identical
+to main after docstring stripping, and the selftest passes, so there is
+no behavior risk whatsoever. Nothing in CI will ever catch it, since
+the gates are selftests and greps, not a linter. It is a visible seam
+in source, of the same family as the wrap I noted in round 1, in a
+comment added to fix a readability note. Worth the one-line fix while
+the file is open, and I am not counting it toward the block.
+
+## Register walk, round 2
+
+- R2: Finding 2 above. Every other claim touched by this commit
+  verified against the running code: the three register descriptions,
+  the two upstream issue references, the badge repo pointer, the badge
+  necessity-and-insufficiency sentence.
+- R5, R12: nothing removed. The R12 skip disclosure in USING.md is
+  intact and its citation now carries its own gloss; the R5 quarantine
+  comments in fitness_attest.py are untouched.
+- R6: RED-TEAM.md is unchanged by this commit, so the residual verified
+  in round 1 stands, and the badge docstring now points at the repo
+  whose trust root the residual invokes.
+- R7: better again. The register is now described by what it is rather
+  than how big it is, which reads as an invitation rather than a
+  credential, and agents/red-team.md's "every row" removes an internal
+  range from the one artifact that defines how this project reviews
+  itself.
+- R9: this is round 2 of two, appended to reviews/pr-9-redteam-verdict.
+  md, bound to PR 9.
+- R10: ci.yml's credential grep run verbatim, tree-wide, exits clean.
+  The new external references are two public issue numbers and one
+  public repo path; none matches a pattern.
+- R11: no selftest coverage lost, no selftest body touched. All four
+  run unmasked with exit codes read directly: sweep_providers 0,
+  quarc_attest 0, make_badge 0, fitness_attest 0. AST comparison
+  against main, docstrings stripped: make_badge and quarc_attest
+  identical, fitness_attest differing by the single refusal string. The
+  wording PR remains a wording PR.
+
+## Disposition, since the round budget is now spent
+
+Per R9 this goes to the steward with both positions, and mine is
+narrow. Everything under review is verified, twice, and the PR is a
+clear improvement on what it set out to improve. One sentence in the
+operator's guide currently tells a data producer something the code
+will refuse, and one sentence in a docstring miscounts what it
+enumerates. Both are two-line fixes and neither needs another red-team
+round: the fix is verifiable by reading it against emit()'s three
+REFUSED branches. My recommendation is to fix those two sentences and
+merge on the steward's own signature rather than convening a round 3,
+which the contract does not provide.
+
+The steward's position, recorded fairly: the round 1 blocker was taken
+rather than overruled, the class was searched rather than the instance
+patched, and the fix chosen retires the trap instead of resetting it.
+That is a better response than the finding deserved, and it is the
+reason a second instance of the class was findable at all.
+
+Closest call: whether to approve and note Finding 2 instead of
+blocking. It blocks because it is the same class I blocked on in round
+1, and applying that standard to a pre-existing README sentence but not
+to a rewritten docstring and a self-contradicting operator's guide
+would make round 1 arbitrary rather than principled.
