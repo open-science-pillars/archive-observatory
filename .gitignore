@@ -1,0 +1,6 @@
+# Private tier holds by construction (red-team PR 3 round 2 note):
+# sweep outputs are never committed by accident; the scheduled
+# workflow force-adds exactly the aggregate artifact it is allowed to
+# publish.
+sweeps/
+__pycache__/

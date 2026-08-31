@@ -10,6 +10,7 @@ jobs:
         run: |
           uv run tools/sweep_providers.py data/requirements-seed.yaml --selftest
           uv run tools/quarc_attest.py --selftest
+          uv run tools/make_badge.py --selftest
       - name: Credential-free invariant (red-team R10)
         # Tree-wide, all file types, all register patterns including
         # token. Excluded: this file and RED-TEAM.md, whose pattern
