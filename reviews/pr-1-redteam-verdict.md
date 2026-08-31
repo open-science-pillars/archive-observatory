@@ -1,0 +1,53 @@
+# Red-team verdict: PR 1 (bootstrap), round 1
+
+VERDICT: BLOCK
+
+Verified before findings: both selftests PASS under uv run; the R10 grep as implemented exits clean on the tree; the two disclosed bootstrap adaptations (workflows moved under .github/workflows/, the ci.yml self-exclusion whose pattern-definition line does self-match) are honest and minimal, and sweep.yml remains inside the grep's scope.
+
+Findings:
+
+1. R2. data/requirements-seed.yaml ships req-doi as class MUST while its source section reads esdis-doc-pending, and the seed's own header states that esdis-doc-pending blocks MUST. Nothing enforces the block: load_rules in tools/sweep_providers.py reads the class verbatim, and the selftest already prints req-doi as MUST. This is the R2 attack in the first commit: a provider is flagged against a mandate whose citation was never verified, and one wrong MUST invites wholesale dismissal of everything else. Either demote req-doi until the citation is verified or gate the class in load_rules so a pending source can never surface as MUST.
+
+2. R6. The register's designed-in mitigation says the attester rejects receipts whose revision ids no longer match CMR. tools/quarc_attest.py neither records nor checks them: run mode writes records as concept_id only (the docstring's optional revision_id field is never populated), and attest checks only pinned version, ruleset hash, and error count. A receipt generated against an old record revision attests PASS indefinitely, which is exactly the stale-receipt replay R6 names. Secondary: the attest PASS line prints "ruleset verified" even under --skip-env-checks, so a skipped check reads as a verified one in logs.
+
+3. R1. .github/workflows/sweep.yml auto-publishes a POCLOUD-dated aggregate file (a named provider's per-rule pass rates) to the public repo on a monthly cron with contents write and no human in the loop. The policy's default-public tier is cross-archive statistics (pass rates per rule per provider count, never per collection); a file naming one provider is at best ambiguous against that tier, and the written opt-in the policy requires beyond it, recorded in the repo, exists nowhere in the tree. Worse, the private and public split is enforced by a deny-list (rm -f sweeps/*PRIVATE* before git add sweeps/): one renamed suffix in report() and the per-collection failure lists ship publicly by a bot. The publish step must allow-list the aggregate artifact or write detail outside the committed path, and the schedule should not run until the PO.DAAC opt-in record is in the repo.
+
+4. R7. The policy binds every published artifact to the non-affiliation line. The one artifact the system publishes unattended, the aggregate file written by report() in tools/sweep_providers.py, carries no such line, only a provider name, counts, and MUST or SHOULD labels. An unattributed file of named-provider pass rates labeled MUST is the enforcement-shaped artifact R7 warns about. Tone elsewhere (README, policy, template) holds the mirror frame well.
+
+5. R9. The CI verdict gate is test -f redteam-verdict.md. The moment this PR merges with its verdict at the root, every future PR inherits the file and the gate passes forever without any new review, converting the R9 mitigation into the theater it was designed to prevent. Bind the verdict to the PR under review: the verdict names the PR number and CI matches it against the event, or verdicts live at a per-PR path.
+
+6. R10. The register commits CI to grep for netrc, token, Authorization, and EDL patterns across the tree. The implemented check drops the token pattern entirely and scans only tools/, data/, and .github/workflows/, restricted to .py, .yml, and .yaml. Verified: the word token appears nowhere in the scanned scope, so no false positive forced the drop. A credentialed tools/fetch.sh, a Dockerfile, or a doc snippet passes untouched, which is R10's silent-death attack. Only the ci.yml self-exclusion was disclosed; the dropped pattern and the scope narrowing were not.
+
+7. R4. The sweeper docstring claims an incremental mode keyed on revision dates to stay polite. No such mode exists: fetch_provider takes no revision parameter and keeps no state. The register preamble is explicit that a finding closes only by a designed-in control, never by intent; a claimed-but-absent mitigation is worse than an absent one because readers will trust it. Implement the mode or strike the claim. The throttling that does exist (Client-Id, one second between pages, bounded pages, monthly cadence) is adequate for bootstrap scope.
+
+8. R5. severity_counts in tools/quarc_attest.py derives receipt counts by substring-counting quoted severity words in the JSON-serialized results. pyQuARC messages embed metadata field values, so third-party metadata containing a quoted severity word inflates the error count and can flip attest to FAIL: metadata content steering a gate outcome, against the R5 posture that metadata is rendered as data, never signal. Parse severities from the result structure instead. Related: the private detail report interpolates ShortNames into markdown bullets unquoted.
+
+Findings 1, 2, 3, and 5 are the blockers. Findings 4, 6, 7, and 8 should land in the same pass, since each is a register mitigation the register already claims is designed in. Round 2 reviews the fixes.
+
+# Red-team verdict: PR 1 (bootstrap), round 2
+
+VERDICT: APPROVE
+
+Register IDs checked against commit 5ad869c, with both selftests re-run PASS under uv run and the exact CI grep re-run clean:
+
+R1: sweep.yml now gates on optin/POCLOUD.md, which does not yet exist, so the schedule sweeps and publishes nothing until the written opt-in is recorded; publishing is an allow-list of sweeps/*-aggregate.txt with the deny-rm kept as a second belt. Verified the gate logic and the absent optin/ directory.
+
+R2: load_rules demotes any MUST whose source section is not verified to SHOULD*, the selftest asserts req-doi lands as SHOULD*, and the aggregate prints the held-at-SHOULD footnote. Verified in the selftest output; the gate is enforced in code, not intended in a comment.
+
+R3: pins unchanged and correct (git tag v1.3.0, PINNED_VERSION 1.2.8 with the version.txt event documented, ruleset hash in every receipt).
+
+R4: the incremental-mode claim is struck; the docstring now states only the throttling that exists and names the incremental mode as future work.
+
+R5: severity_counts walks the result structure (valid flags, cmr_validation lists, pyquarc_errors) and scans no serialized text; the crafted-metadata selftest case, with quoted severity words planted in messages, counts them as nothing. Counting every failed check at error severity is disclosed in the docstring and errs only in the strict direction. Detail ShortNames are backticked as data.
+
+R6: run mode records each concept id's current CMR revision id and attest gains check A4 via revision_mismatches with an injectable fetcher; the selftest covers both the mismatch case, which fails, and the match case, which passes. The skip path now prints SKIPPED wording instead of claiming verification.
+
+R7: aggregate and detail artifacts both carry the non-affiliation line, verified in the selftest output; tone across the artifacts holds the mirror frame.
+
+R8: unchanged; all outputs stay in this repository.
+
+R9: verdicts live at reviews/pr-<number>-redteam-verdict.md, CI binds the gate to github.event.pull_request.number, and the agent contract was updated to match, so a merged verdict can no longer satisfy a future PR's gate.
+
+R10: the grep is tree-wide across all file types with the token pattern restored; the exclusions are exactly ci.yml, RED-TEAM.md, and reviews/, each of which self-matches by quoting the patterns as data, and all three are disclosed in the workflow comment. I ran the exact command and it exits clean, and I confirmed the option-order fix (commit 0a4fbb3) is moot in the final form since no include filters remain.
+
+Closest call: A4 is fail-open at its edges, since a record whose revision_id is missing or was recorded as null after a failed fetch is silently skipped and an unreachable CMR at attest time passes rather than fails while the PASS line still reads "record revisions verified", which is acceptable inside the register R6 trust root where badges come only from the observatory's own scheduled runs, but a hard fail or explicit unverifiable wording on those paths should land before the first badge is ever emitted.

@@ -1,0 +1,30 @@
+name: monthly-sweep
+on:
+  schedule:
+    - cron: "17 6 3 * *"
+  workflow_dispatch: {}
+permissions:
+  contents: write
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - name: Sweep and publish aggregate only (publication policy, red-team R1)
+        # Opt-in gate: no provider is swept on a schedule without its
+        # written opt-in recorded under optin/. Publishing is an
+        # allow-list of the aggregate artifact; the private detail is
+        # additionally removed and is never git-added.
+        run: |
+          if [ ! -f optin/POCLOUD.md ]; then
+            echo "No written opt-in recorded (optin/POCLOUD.md); sweeping and publishing nothing."
+            exit 0
+          fi
+          uv run tools/sweep_providers.py data/requirements-seed.yaml \
+            --providers POCLOUD --out-dir sweeps/
+          rm -f sweeps/*PRIVATE*
+          git config user.name observatory-bot
+          git config user.email bot@users.noreply.github.com
+          git add sweeps/*-aggregate.txt
+          git commit -m "monthly aggregate sweep" && git push

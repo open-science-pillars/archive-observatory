@@ -1,0 +1,50 @@
+# Requirements bundle seed. Rule classes per red-team R2:
+#   MUST   = documented requirement; source section cited and verified
+#            before the class is set (esdis-doc-pending blocks MUST)
+#   SHOULD = ARC framework best practice, attributed to ARC, never
+#            presented as a mandate
+# check.binding: cmr-structural (sweep_providers.py) or pyquarc
+# (quarc_attest.py; check ids mapped during the SET co-build).
+meta:
+  compiled_outputs: [pyquarc rules_override (generated, never hand-edited)]
+rules:
+  - id: req-doi
+    class: MUST
+    statement: Every public collection carries a registered DOI.
+    source: {doc: ESDIS DOI policy, section: esdis-doc-pending}
+    check: {binding: cmr-structural, id: doi-present}
+  - id: req-temporal-extent
+    class: MUST
+    statement: Collection metadata declares its temporal extent.
+    source: {doc: UMM-C schema (required field), section: verified}
+    check: {binding: cmr-structural, id: temporal-extent-present}
+  - id: req-spatial-extent
+    class: MUST
+    statement: Collection metadata declares its spatial extent.
+    source: {doc: UMM-C schema (required field), section: verified}
+    check: {binding: cmr-structural, id: spatial-extent-present}
+  - id: req-abstract
+    class: SHOULD
+    statement: The abstract is present and informative (ARC completeness).
+    source: {doc: ARC metadata quality framework, section: attributed}
+    check: {binding: cmr-structural, id: abstract-present}
+  - id: req-related-urls
+    class: SHOULD
+    statement: Related URLs are present (documentation, access, citation).
+    source: {doc: ARC metadata quality framework, section: attributed}
+    check: {binding: cmr-structural, id: related-urls-present}
+  - id: req-gcmd-keywords-valid
+    class: SHOULD
+    statement: Platform and instrument keywords resolve in GCMD KMS.
+    source: {doc: ARC framework and GCMD governance, section: attributed}
+    check: {binding: pyquarc, id: co-build-map}
+  - id: req-links-resolve
+    class: SHOULD
+    statement: Related URLs resolve without error.
+    source: {doc: ARC framework, section: attributed}
+    check: {binding: pyquarc, id: co-build-map}
+  - id: req-collection-granule-consistency
+    class: SHOULD
+    statement: Collection and granule metadata agree on shared fields.
+    source: {doc: ARC framework, section: attributed}
+    check: {binding: pyquarc, id: co-build-map}
