@@ -176,7 +176,15 @@ def main() -> int:
 
     if args.selftest:
         t = tally(SELFTEST_ENTRIES, rules)
-        ok = (rules["req-doi"]["class"] == "SHOULD*"
+        import tempfile
+        with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as tf:
+            tf.write("rules:\n  - id: r-gate\n    class: MUST\n"
+                     "    statement: synthetic\n"
+                     "    source: {doc: pending, section: not-yet-verified}\n"
+                     "    check: {binding: cmr-structural, id: doi-present}\n")
+        gate = load_rules(Path(tf.name))
+        ok = (gate["r-gate"]["class"] == "SHOULD*"
+              and rules["req-doi"]["class"] == "SHOULD"
               and t["req-doi"]["pass"] == 1 and "NO_DOI" in t["req-doi"]["fail"]
               and t["req-temporal-extent"]["pass"] == 2
               and t["req-abstract"]["pass"] == 2)
