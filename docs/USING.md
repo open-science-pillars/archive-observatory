@@ -90,10 +90,9 @@ submission on its own terms:
 
 A MUST candidate that is held at SHOULD* for want of a verified
 citation deliberately does not break your build; only rules whose
-mandate is cited do. (Parenthetical R-numbers throughout this guide,
-like register R2 here, point at rows of RED-TEAM.md in this
-repository: the attack each control exists to stop, and why it works
-the way it does.)
+mandate is cited do. (R-numbers in parentheses, here and below, name
+rows of RED-TEAM.md in this repository, where each control is written
+down with the attack it exists to stop.)
 
 Exit codes are distinct on purpose, so your pipeline can tell a
 finding from a malfunction:
@@ -109,9 +108,9 @@ rather than crashing the run, so one bad export never masquerades as a
 compliance failure. Skipped records are also counted in both output
 files, and under `--fail-on-must` a run that skipped anything exits 1
 even when every rule passed: a gate cannot report green over content
-it never examined (register R12). If your draft is skipped, the
-report says how many and why, and the percentages describe only the
-records that were actually read.
+it never examined (register R12, a row of RED-TEAM.md in this repo).
+If your draft is skipped, the report says how many and why, and the
+percentages describe only the records that were actually read.
 
 **Where results land.** Only a whole-provider sweep writes an
 aggregate marked publishable. `--files` and `--short-names` produce
@@ -214,7 +213,7 @@ capsules exist, so no receipt implies assurance that does not exist).
 
 ## Where the trust comes from
 
-RED-TEAM.md is the eleven-row adversarial register every change is
+RED-TEAM.md is the adversarial register every change is
 reviewed against, and reviews/ holds the verdict of every PR, merged
 with the change it reviewed: what was challenged, what blocked, what
 was fixed. The publication policy (docs/publication-policy.md) binds

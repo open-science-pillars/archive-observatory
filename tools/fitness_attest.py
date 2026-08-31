@@ -23,8 +23,8 @@ vocabulary file data/claim-classes.yaml is the governed source):
 by a human: actor (the same trust key the whole format uses). The
 attester verifies the DECLARATION, not the analysis; the receipt
 records declaration_provenance, and only hand-declared exists until
-capsule derivation lands (the capsule tier is refused until
-then, so a receipt can never claim assurance that does not exist).
+capsule derivation lands (the capsule tier is refused until then, so
+a receipt can never claim assurance that does not exist).
 
 Usage:
   fitness_attest.py BUNDLE_ROOT [BUNDLE_ROOT ...] --product SHORTNAME

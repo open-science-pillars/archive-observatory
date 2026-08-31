@@ -35,8 +35,8 @@ archives, not an audit performed on them.
 
 ## The register
 
-RED-TEAM.md is the standing adversarial register: ten attacks, their
-consequences, and the designed-in mitigations. Every PR is reviewed
+RED-TEAM.md is the standing adversarial register: attacks, their
+consequences, and the designed-in mitigation for each. Every PR is reviewed
 against it by the red-team agent (agents/red-team.md), whose verdict
 file merges with the change; CI enforces its presence.
 
