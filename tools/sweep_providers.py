@@ -183,6 +183,7 @@ def main() -> int:
                      "    source: {doc: pending, section: not-yet-verified}\n"
                      "    check: {binding: cmr-structural, id: doi-present}\n")
         gate = load_rules(Path(tf.name))
+        Path(tf.name).unlink()  # red-team tidiness note, PR 2 verdict
         ok = (gate["r-gate"]["class"] == "SHOULD*"
               and rules["req-doi"]["class"] == "SHOULD"
               and t["req-doi"]["pass"] == 1 and "NO_DOI" in t["req-doi"]["fail"]
