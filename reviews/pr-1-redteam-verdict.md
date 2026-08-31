@@ -23,3 +23,31 @@ Findings:
 8. R5. severity_counts in tools/quarc_attest.py derives receipt counts by substring-counting quoted severity words in the JSON-serialized results. pyQuARC messages embed metadata field values, so third-party metadata containing a quoted severity word inflates the error count and can flip attest to FAIL: metadata content steering a gate outcome, against the R5 posture that metadata is rendered as data, never signal. Parse severities from the result structure instead. Related: the private detail report interpolates ShortNames into markdown bullets unquoted.
 
 Findings 1, 2, 3, and 5 are the blockers. Findings 4, 6, 7, and 8 should land in the same pass, since each is a register mitigation the register already claims is designed in. Round 2 reviews the fixes.
+
+# Red-team verdict: PR 1 (bootstrap), round 2
+
+VERDICT: APPROVE
+
+Register IDs checked against commit 5ad869c, with both selftests re-run PASS under uv run and the exact CI grep re-run clean:
+
+R1: sweep.yml now gates on optin/POCLOUD.md, which does not yet exist, so the schedule sweeps and publishes nothing until the written opt-in is recorded; publishing is an allow-list of sweeps/*-aggregate.txt with the deny-rm kept as a second belt. Verified the gate logic and the absent optin/ directory.
+
+R2: load_rules demotes any MUST whose source section is not verified to SHOULD*, the selftest asserts req-doi lands as SHOULD*, and the aggregate prints the held-at-SHOULD footnote. Verified in the selftest output; the gate is enforced in code, not intended in a comment.
+
+R3: pins unchanged and correct (git tag v1.3.0, PINNED_VERSION 1.2.8 with the version.txt event documented, ruleset hash in every receipt).
+
+R4: the incremental-mode claim is struck; the docstring now states only the throttling that exists and names the incremental mode as future work.
+
+R5: severity_counts walks the result structure (valid flags, cmr_validation lists, pyquarc_errors) and scans no serialized text; the crafted-metadata selftest case, with quoted severity words planted in messages, counts them as nothing. Counting every failed check at error severity is disclosed in the docstring and errs only in the strict direction. Detail ShortNames are backticked as data.
+
+R6: run mode records each concept id's current CMR revision id and attest gains check A4 via revision_mismatches with an injectable fetcher; the selftest covers both the mismatch case, which fails, and the match case, which passes. The skip path now prints SKIPPED wording instead of claiming verification.
+
+R7: aggregate and detail artifacts both carry the non-affiliation line, verified in the selftest output; tone across the artifacts holds the mirror frame.
+
+R8: unchanged; all outputs stay in this repository.
+
+R9: verdicts live at reviews/pr-<number>-redteam-verdict.md, CI binds the gate to github.event.pull_request.number, and the agent contract was updated to match, so a merged verdict can no longer satisfy a future PR's gate.
+
+R10: the grep is tree-wide across all file types with the token pattern restored; the exclusions are exactly ci.yml, RED-TEAM.md, and reviews/, each of which self-matches by quoting the patterns as data, and all three are disclosed in the workflow comment. I ran the exact command and it exits clean, and I confirmed the option-order fix (commit 0a4fbb3) is moot in the final form since no include filters remain.
+
+Closest call: A4 is fail-open at its edges, since a record whose revision_id is missing or was recorded as null after a failed fetch is silently skipped and an unreachable CMR at attest time passes rather than fails while the PASS line still reads "record revisions verified", which is acceptable inside the register R6 trust root where badges come only from the observatory's own scheduled runs, but a hard fail or explicit unverifiable wording on those paths should land before the first badge is ever emitted.
