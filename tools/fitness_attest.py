@@ -86,6 +86,44 @@ def load_classes(path: Path) -> dict:
     return {"ids": ids, "umbrella_of": umbrella}
 
 
+def str_list(v) -> list | None:
+    """A list of strings, or None. Register R5: scalar strings are
+    NEVER read through list semantics (substring membership,
+    character iteration), so anything else is malformed."""
+    if isinstance(v, list) and v and all(isinstance(x, str) for x in v):
+        return v
+    return None
+
+
+def validate_domain(dom: dict, vocab: dict) -> list:
+    """Structural validation before any adjudication (register R5,
+    PR 5 round 1 findings F1 and F2). A malformed domain is
+    quarantined into the receipt's malformed list and never
+    adjudicates, signed or not."""
+    problems = []
+    if str_list(dom.get("products")) is None:
+        problems.append("products must be a non-empty list of strings")
+    classes = str_list(dom.get("claim_classes"))
+    if classes is None:
+        problems.append("claim_classes must be a non-empty list of strings")
+    else:
+        bad = sorted(set(classes) - vocab["ids"])
+        if bad:
+            problems.append("ungoverned claim classes: " + ", ".join(bad))
+    if dom.get("polarity", "supporting") not in ("supporting", "exclusion"):
+        problems.append("polarity must be supporting or exclusion")
+    region = dom.get("region", "global")
+    if region != "global" and not (isinstance(region, dict)
+            and isinstance(region.get("bbox"), list) and len(region["bbox"]) == 4
+            and all(isinstance(x, (int, float)) for x in region["bbox"])):
+        problems.append("region must be global or {bbox: [latmin, latmax, lonmin, lonmax]}")
+    period = dom.get("period", "any")
+    if period != "any" and not (isinstance(period, dict)
+            and isinstance(period.get("start"), str) and isinstance(period.get("end"), str)):
+        problems.append("period must be any or {start, end} strings")
+    return problems
+
+
 def class_covered(declared: str, domain_classes: list, vocab: dict) -> bool:
     if declared in domain_classes:
         return True
@@ -146,12 +184,18 @@ def attest(roots, decl, vocab) -> dict:
         return {"error": f"declaration provenance '{decl['provenance']}' is not "
                          "available: capsule derivation arrives with kit 15, and "
                          "this attester refuses to imply assurance that does not exist"}
-    governing, advisory = [], []
+    governing, advisory, malformed = [], [], []
     verdict = "UNADJUDICATED"
     for path, fm in load_domains(roots):
         dom = fm["domain"]
-        classes = dom.get("claim_classes", [])
-        if not class_covered(decl["claim"], classes, vocab):
+        problems = validate_domain(dom, vocab)
+        if problems:
+            # R5: never read a malformed domain through str semantics;
+            # quarantine it visibly and adjudicate nothing from it.
+            malformed.append({"concept": path, "problems": problems,
+                              "signed": is_signed(fm)})
+            continue
+        if not class_covered(decl["claim"], dom["claim_classes"], vocab):
             continue
         polarity = dom.get("polarity", "supporting")
         mode = "intersect" if polarity == "exclusion" else "contain"
@@ -177,6 +221,7 @@ def attest(roots, decl, vocab) -> dict:
         "declaration_provenance": decl["provenance"],
         "governing_concepts": governing,
         "advisory_unsigned": advisory,
+        "malformed_domains": malformed,
         "vocabulary_sha256": decl["vocab_sha"],
         "generated_at": datetime.datetime.now(datetime.timezone.utc)
                         .strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -201,7 +246,7 @@ def parse_period(s: str):
 def selftest() -> int:
     import tempfile
     ok = True
-    vocab = {"ids": {"statistics", "trend", "budgets", "extremes"},
+    vocab = {"ids": {"statistics", "trend", "budgets", "extremes", "mean-state"},
              "umbrella_of": {"trend": {"statistics"}}}
     with tempfile.TemporaryDirectory() as td:
         b = Path(td)
@@ -238,6 +283,37 @@ def selftest() -> int:
         ok = ok and r["verdict"] == "UNADJUDICATED" and len(r["advisory_unsigned"]) == 1
         r = attest([b], dict(decl("X", "trend"), provenance="capsule-derived"), vocab)
         ok = ok and "error" in r                   # refused tier
+        # PR 5 round 1, F1: a SIGNED domain with scalar claim_classes
+        # must never adjudicate by substring.
+        (b / "f1.md").write_text(
+            "---\ntype: validity-domain\ntitle: scalar classes\n"
+            "verified: { by: human:Mallory, at: 2026-01-01T00:00:00Z }\n"
+            "domain:\n  products: ['ECCO_TEST_*']\n"
+            "  claim_classes: trends-of-the-basin\n"
+            "  polarity: supporting\n---\nbody\n")
+        r = attest([b], decl("ECCO_TEST_MONTHLY", "trend"), vocab)
+        ok = ok and r["verdict"] == "UNADJUDICATED"
+        ok = ok and any("claim_classes must be" in p for m in r["malformed_domains"]
+                        for p in m["problems"])
+        # PR 5 round 1, F2: a SIGNED domain with scalar products must
+        # never become match-all via character iteration.
+        (b / "f2.md").write_text(
+            "---\ntype: validity-domain\ntitle: scalar products\n"
+            "verified: { by: human:Mallory, at: 2026-01-01T00:00:00Z }\n"
+            "domain:\n  products: 'ECCO_TEST_*'\n"
+            "  claim_classes: [mean-state]\n"
+            "  polarity: supporting\n---\nbody\n")
+        r = attest([b], decl("COMPLETELY_UNRELATED_PRODUCT", "mean-state"), vocab)
+        ok = ok and r["verdict"] == "UNADJUDICATED"
+        # And a signed domain naming an ungoverned class in a proper
+        # list is quarantined too (the invariant is now two-sided).
+        (b / "f3.md").write_text(
+            "---\ntype: validity-domain\ntitle: ungoverned member\n"
+            "verified: { by: human:Mallory, at: 2026-01-01T00:00:00Z }\n"
+            "domain:\n  products: ['ECCO_TEST_*']\n"
+            "  claim_classes: [vibes]\n  polarity: exclusion\n---\nbody\n")
+        r = attest([b], decl("ECCO_TEST_MONTHLY", "trend"), vocab)
+        ok = ok and r["verdict"] == "UNADJUDICATED" and len(r["malformed_domains"]) == 3
         r2 = attest([b], decl("ECCO_L4_OCEAN_VEL_05DEG_MONTHLY_V4R4", "budgets"), vocab)
         ok = ok and {k: r2[k] for k in ("verdict", "governing_concepts")} \
                  == {"verdict": "OUT", "governing_concepts": r2["governing_concepts"]}
