@@ -12,11 +12,15 @@ jobs:
           uv run tools/quarc_attest.py --selftest
       - name: Credential-free invariant (red-team R10)
         # Scope excludes this file: the pattern string would match its
-        # own definition line. The workflow dir is still scanned.
+        # own definition line. The workflow dir is still scanned. The
+        # exclude comes AFTER the includes: GNU grep resolves
+        # include/exclude conflicts by the last matching option, so an
+        # exclude listed first is overridden for *.yml files.
         run: |
           ! grep -rniE "netrc|earthdata_login|EDL_|Authorization: Bearer|api[_-]?key" \
-            tools/ data/ .github/workflows/ --exclude=ci.yml \
-            --include="*.py" --include="*.yml" --include="*.yaml"
+            tools/ data/ .github/workflows/ \
+            --include="*.py" --include="*.yml" --include="*.yaml" \
+            --exclude=ci.yml
       - name: Red-team verdict present on PRs
         if: github.event_name == 'pull_request'
         run: test -f redteam-verdict.md
