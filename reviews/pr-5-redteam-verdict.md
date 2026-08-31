@@ -111,3 +111,46 @@ Closest call: R11 and R7 both pass cleanly and the refusal and draft
 rules are sound, so the block rests entirely on the two type-confusion
 verdict-steering paths under R5; had frontmatter types been validated,
 this would have been an APPROVE.
+
+# Red-team verdict: PR 5 (fitness attester), round 2
+
+VERDICT: APPROVE
+
+Both round 1 findings verified dead against the running code at commit
+0ab111a, not against the description. The round 1 evidence commands
+were re-run unchanged: the scalar claim_classes substring attack
+(F1) and the scalar products glob-star attack (F2) both now return
+UNADJUDICATED, with the signed offending domain quarantined in the
+receipt's malformed_domains list, signed flag true and the problem
+named (claim_classes must be a non-empty list of strings; products
+must be a non-empty list of strings). str_list refuses scalars before
+any list semantics are applied, validate_domain checks every domain
+claim-class member against the governed vocabulary (the closed-set
+invariant is now two-sided; a proper list naming an ungoverned class
+is quarantined), and polarity, region, and period shapes are
+validated, so the capitalized-polarity variant probed in round 1 is
+quarantined visibly instead of vanishing. The selftest carries all
+three attack forms verbatim and asserts UNADJUDICATED with the
+quarantine visible.
+
+Register IDs checked, round 2: R5 (both findings closed structurally;
+verdicts derive from validated types, and no text scan path remains),
+R11 (selftest re-run PASS at exit 0, still in ci.yml's gates step
+unmasked, ci.yml unchanged by this commit), R10 (exact CI credential
+grep re-run at repo root, exit 0, and the commit touches only the
+attester and this verdict file), R9 (the round 1 verdict is committed
+at reviews/pr-5-redteam-verdict.md and this round appends to it), R7
+(the quarantine messages name the problem in the domain, not a
+person or provider; tone unchanged). Regressions probed: exclusion
+precedence still OUT on the control pair, draft domains still never
+adjudicate (a draft match-all exclusion stays advisory), umbrella
+subsumption still exactly one level, both refusal paths still REFUSED
+at exit 1.
+
+Closest call: a malformed signed exclusion now adjudicates nothing by
+design, so a co-present well-formed supporting domain can still yield
+IN while the quarantined exclusion is visible only in the receipt,
+not in the console summary, and printing malformed_domains on stdout
+alongside governing and advisory would close that last visibility gap
+without changing any verdict semantics; it is a follow-up note for
+the steward, not a block.

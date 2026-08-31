@@ -362,6 +362,10 @@ def main() -> int:
         print(f"  governing: {g['concept']} ({g['polarity']}: {g['title']})")
     for a in r["advisory_unsigned"]:
         print(f"  advisory (unsigned, does not adjudicate): {a['concept']}")
+    for m in r["malformed_domains"]:
+        tag = " [SIGNED]" if m.get("signed") else ""
+        print(f"  malformed (quarantined, adjudicates nothing){tag}: "
+              f"{m['concept']} ({'; '.join(m['problems'])})")
     if args.receipt:
         print(f"receipt -> {args.receipt}")
     return 0
