@@ -1,0 +1,23 @@
+name: monthly-sweep
+on:
+  schedule:
+    - cron: "17 6 3 * *"
+  workflow_dispatch: {}
+permissions:
+  contents: write
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - name: Sweep opted-in providers (no secrets by design)
+        run: |
+          uv run tools/sweep_providers.py data/requirements-seed.yaml \
+            --providers POCLOUD --out-dir sweeps/
+      - name: Publish aggregate only (publication policy)
+        run: |
+          rm -f sweeps/*PRIVATE*
+          git config user.name observatory-bot
+          git config user.email bot@users.noreply.github.com
+          git add sweeps/ && git commit -m "monthly aggregate sweep" && git push
