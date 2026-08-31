@@ -91,15 +91,17 @@ badge claims.
 
     uv run tools/fitness_attest.py PATH/TO/BUNDLE/validity-domains \
         --product ECCO_L4_TEMP_SALINITY_LLC0090GRID_MONTHLY_V4R4 \
-        --claim trend --region "35,45,-75,-65" --period "2010-01:2010-12"
+        --claim trend --region "35,45,-75,-65" --period "2010-01:2010-12" \
+        --receipt fitness.json
 
 Three verdicts, from signed validity-domain concepts in a knowledge
 bundle: IN (a signed supporting domain fully contains your
 declaration), OUT (a signed exclusion intersects it; exclusions take
 precedence), UNADJUDICATED (no steward has spoken; honest silence,
 never failure). Unsigned drafts are listed as advisory and never
-adjudicate; malformed domains are quarantined visibly and adjudicate
-nothing; a claim class outside the governed vocabulary
+adjudicate; malformed domains are quarantined visibly (on the console
+and in the receipt's malformed_domains list, each problem named) and
+adjudicate nothing; a claim class outside the governed vocabulary
 (data/claim-classes.yaml) is refused outright. The receipt names the
 governing concepts and records how the declaration was produced
 (hand-declared today; the capsule-derived tier is refused until
