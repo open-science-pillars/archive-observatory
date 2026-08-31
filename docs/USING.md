@@ -103,7 +103,12 @@ finding from a malfunction:
 
 A file that is not a UMM-C record is named on stderr and skipped
 rather than crashing the run, so one bad export never masquerades as a
-compliance failure.
+compliance failure. Skipped records are also counted in both output
+files, and under `--fail-on-must` a run that skipped anything exits 1
+even when every rule passed: a gate cannot report green over content
+it never examined (register R12). If your draft is skipped, the
+report says how many and why, and the percentages describe only the
+records that were actually read.
 
 **Where results land.** Only a whole-provider sweep writes an
 aggregate marked publishable. `--files` and `--short-names` produce
