@@ -9,19 +9,19 @@ meta:
   compiled_outputs: [pyquarc rules_override (generated, never hand-edited)]
 rules:
   - id: req-doi
-    class: MUST
-    statement: Every public collection carries a registered DOI.
-    source: {doc: ESDIS DOI policy, section: esdis-doc-pending}
+    class: SHOULD
+    statement: Public collections carry a registered DOI (reviewed practice; the UMM-C DOI element accepts a MissingReason, so no schema mandate exists).
+    source: {doc: "librarian pass 2026-08-30: DOI process page (eligibility), DPDG ESDS-RFC-041 (Suggested Practice), UMM DoiType oneOf MissingReason; concept esdis/requirements/doi-registered.md", section: attributed}
     check: {binding: cmr-structural, id: doi-present}
   - id: req-temporal-extent
     class: MUST
     statement: Collection metadata declares its temporal extent.
-    source: {doc: UMM-C schema (required field), section: verified}
+    source: {doc: "UMM-C JSON schema v1.18.4 top-level required array, cdn.earthdata.nasa.gov, fetched 2026-08-30", section: verified}
     check: {binding: cmr-structural, id: temporal-extent-present}
   - id: req-spatial-extent
     class: MUST
     statement: Collection metadata declares its spatial extent.
-    source: {doc: UMM-C schema (required field), section: verified}
+    source: {doc: "UMM-C JSON schema v1.18.4 top-level required array, cdn.earthdata.nasa.gov, fetched 2026-08-30", section: verified}
     check: {binding: cmr-structural, id: spatial-extent-present}
   - id: req-abstract
     class: SHOULD
