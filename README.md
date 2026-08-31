@@ -27,6 +27,11 @@ archives, not an audit performed on them.
   upstream, held out of publication until resolved.
 - **No LLM in the gate path.** Sweep, harness, and attester are
   deterministic; metadata is rendered as quoted data (register R5).
+- **Provenance tiers never inflate.** Fitness verdicts
+  (tools/fitness_attest.py) record how each declaration was produced;
+  hand-declared says so plainly, and the capsule-derived tier is
+  refused until capsules exist (kit 15 composition contract), so no
+  receipt implies assurance that does not exist.
 
 ## The register
 
