@@ -50,3 +50,27 @@ dropped word so the clause reads "assurance that does not exist."
   to PR 6.
 
 Round 2 on the one-word fix should be immediate.
+
+# Red-team verdict: PR 6 (provenance property), round 2
+
+VERDICT: APPROVE
+
+The round 1 finding is verified closed against the branch, not the
+description. Commit 66c7a3e changes exactly one README line, and the
+clause now reads, verbatim, "so no receipt implies assurance that
+does not exist.", matching tools/fitness_attest.py's docstring and
+data/claim-classes.yaml's capsule-derived note word for word. Register
+IDs checked, round 2: R2 (the truncation is repaired and every claim
+in the bullet remains code-enforced as verified live in the PR 5
+rounds; nothing is asserted that the attester does not do), R7 (tone
+unchanged, mirror not enforcement, no provider named), R9 (the round
+1 verdict is committed on the branch and is byte-identical to the
+content the red team delivered, and this round appends to it), R10
+and R11 (still not implicated; the commit touches README.md and the
+verdict file only, no code, no gates, and the branch README carries
+zero em or en dashes).
+
+Closest call: none of substance; the only check that could have
+turned this round was whether the repaired clause drifted from the
+contract sentence in the tool and the vocabulary, and it matches
+both verbatim.
