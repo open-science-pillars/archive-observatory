@@ -1,0 +1,36 @@
+# Claim-class vocabulary (kit 12). Governed like the kit 11 rules
+# seed: a closed set, extended only by steward PR with provenance;
+# free invention of claim names silences the attester by design.
+# Subsumption is deliberately one level deep: a domain signed for an
+# umbrella covers its children, and nothing deeper is ever inferred.
+meta:
+  settled: 2026-08-30
+  extension_rule: steward PR only; each addition records why the
+    existing classes could not carry the question that motivated it
+classes:
+  - id: statistics
+    children: [mean-state, trend, variability]
+    note: umbrella; signing it covers the three children, one level only
+  - id: mean-state
+  - id: trend
+  - id: variability
+  - id: extremes
+    note: never subsumed by statistics; extreme-value claims need their
+      own validation basis
+  - id: gradients
+  - id: budgets
+verdicts:
+  IN: a signed supporting domain fully contains the declaration
+    (product, class with one-level subsumption, region containment,
+    period containment)
+  OUT: a signed exclusion covers the declaration; exclusions take
+    precedence over any supporting domain and trigger on intersection,
+    not containment
+  UNADJUDICATED: no steward has spoken; honest silence, never failure.
+    Draft domains never adjudicate; the receipt lists them as advisory
+provenance_tiers:
+  hand-declared: the analyst asserts the declaration; the receipt says
+    so plainly
+  capsule-derived: the declaration was generated mechanically from a
+    capsule's actual data selection (kit 15 composition; not yet
+    available, and the attester refuses the tier until it is)
