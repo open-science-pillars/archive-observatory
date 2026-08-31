@@ -43,19 +43,24 @@ file merges with the change; CI enforces its presence.
 ## Layout
 
 ```
-tools/sweep_providers.py   structural sweep over CMR collections.umm_json
-tools/quarc_attest.py      pinned pyQuARC runner, receipts, attester
+tools/sweep_providers.py     structural sweep over CMR collections.umm_json
+tools/quarc_attest.py        pinned pyQuARC runner, receipts, attester
+tools/make_badge.py          opt-in badge from an attested receipt
+tools/fitness_attest.py      can-I-use-X-for-Y verdicts from signed domains
 data/requirements-seed.yaml  MUST/SHOULD rules with provenance gating
+data/claim-classes.yaml      the governed claim-class vocabulary
+docs/USING.md                the operator's guide (start here to run things)
 docs/publication-policy.md   the publication policy, binding
+docs/policy-log.md           delivery windows, event metadata only
 agents/red-team.md           the reviewer contract
+reviews/                     every PR's red-team verdict, merged with it
 templates/provider-report.md the private-first receipted report
 .github/workflows/           ci.yml (gates) and sweep.yml (monthly aggregate)
 ```
 
-Run the selftests: `uv run tools/sweep_providers.py
-data/requirements-seed.yaml --selftest` and `uv run
-tools/quarc_attest.py --selftest` (python via uv only; the PEP 723
-blocks carry the pins).
+New here and want to run something? docs/USING.md walks all four
+tools from clone to first receipt, credential-free (python via uv
+only; the PEP 723 blocks carry the pins).
 
 ## Contributing
 
