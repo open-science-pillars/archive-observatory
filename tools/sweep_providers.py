@@ -25,9 +25,17 @@ plumbing hit), so a doi-present check against it fails every collection. Everyth
 validity, link resolution, granule consistency) belongs to the pyQuARC
 harness, not here.
 
+Three ways to name what gets checked, so a producer can check their own
+metadata before it is anyone else's problem:
+  --files    local UMM-C JSON on disk; nothing needs to be registered
+  --short-names  a subset of registered collections, by ShortName
+  --providers    a whole provider's registered collections
+
 Usage:
+  sweep_providers.py data/requirements-seed.yaml --files draft.json [more.json ...]
+  sweep_providers.py data/requirements-seed.yaml --short-names ECCO_L4_SSH_LLC0090GRID_MONTHLY_V4R4
   sweep_providers.py data/requirements-seed.yaml --providers POCLOUD [NSIDC_CPRD ...]
-      [--page-size 200] [--max-pages 5] [--out-dir sweeps/]
+      [--page-size 200] [--max-pages 5] [--out-dir sweeps/] [--fail-on-must]
   sweep_providers.py data/requirements-seed.yaml --selftest
 """
 
@@ -110,6 +118,57 @@ def load_rules(path: Path) -> dict:
     return rules
 
 
+def read_local(paths: list) -> list:
+    """Local UMM-C JSON, nothing registered anywhere. Accepts a bare UMM
+    record, a {"umm": ...} item, or a search-result envelope with
+    "items"; a file that is none of those is reported, never guessed at."""
+    entries, problems = [], []
+    for path in paths:
+        try:
+            doc = json.loads(Path(path).read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            problems.append(f"{path}: unreadable ({exc.__class__.__name__})")
+            continue
+        if isinstance(doc, dict) and isinstance(doc.get("items"), list):
+            items = doc["items"]
+        elif isinstance(doc, dict) and isinstance(doc.get("umm"), dict):
+            items = [doc]
+        elif isinstance(doc, dict) and "ShortName" in doc:
+            items = [{"umm": doc}]
+        else:
+            problems.append(f"{path}: not a UMM-C record, a umm item, or a "
+                            "search envelope")
+            continue
+        for item in items:
+            e = flatten_umm(item)
+            e["source_file"] = str(path)
+            e["short_name"] = e.get("short_name") or f"(no ShortName in {path})"
+            entries.append(e)
+    for problem in problems:
+        print(f"  skipped: {problem}", file=sys.stderr)
+    return entries
+
+
+def fetch_short_names(short_names: list) -> list:
+    """A named subset of registered collections. One request per name so
+    a typo shows up as its own miss rather than silently shrinking the
+    set."""
+    entries = []
+    for name in short_names:
+        params = {"short_name": name, "page_size": 50}
+        req = urllib.request.Request(CMR + "?" + urllib.parse.urlencode(params),
+                                     headers={"Client-Id": CLIENT_ID,
+                                              "User-Agent": CLIENT_ID})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            batch = json.loads(r.read()).get("items", []) or []
+        if not batch:
+            print(f"  no registered collection matches ShortName {name}",
+                  file=sys.stderr)
+        entries += [flatten_umm(it) for it in batch]
+        time.sleep(1)  # register R4: polite by construction
+    return entries
+
+
 def fetch_provider(provider: str, page_size: int, max_pages: int) -> list:
     entries = []
     for page in range(1, max_pages + 1):
@@ -141,6 +200,14 @@ def tally(entries: list, rules: dict) -> dict:
             else:
                 out[rid]["fail"].append(e.get("short_name") or e.get("id", "?"))
     return out
+
+
+def must_failures(tallies: dict) -> list:
+    """Rule ids of MUST-class rules with at least one failing record.
+    A MUST demoted to SHOULD* for want of a verified citation (register
+    R2) is deliberately not a build breaker."""
+    return sorted(rid for rid, t in tallies.items()
+                  if t["class"] == "MUST" and t["fail"])
 
 
 def report(provider: str, n: int, tallies: dict, out_dir: Path | None):
@@ -179,10 +246,19 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("rules_seed", type=Path)
-    ap.add_argument("--providers", nargs="+", default=["POCLOUD"])
+    ap.add_argument("--files", nargs="+", default=None,
+                    help="local UMM-C JSON files; nothing needs to be registered")
+    ap.add_argument("--short-names", nargs="+", default=None,
+                    help="a named subset of registered collections")
+    ap.add_argument("--providers", nargs="+", default=None,
+                    help="whole registered providers (default POCLOUD when "
+                         "no other selector is given)")
     ap.add_argument("--page-size", type=int, default=200)
     ap.add_argument("--max-pages", type=int, default=5)
     ap.add_argument("--out-dir", type=Path, default=None)
+    ap.add_argument("--fail-on-must", action="store_true",
+                    help="exit 1 when any MUST-class rule has a failing "
+                         "record; for a producer's own CI")
     ap.add_argument("--selftest", action="store_true")
     args = ap.parse_args()
 
@@ -208,13 +284,68 @@ def main() -> int:
               and t["req-doi"]["pass"] == 1 and "NO_DOI" in t["req-doi"]["fail"]
               and t["req-temporal-extent"]["pass"] == 2
               and t["req-abstract"]["pass"] == 2)
+        # Local-file reading and the CI exit lever, exercised here so a
+        # producer's two entry points are covered by the same gate.
+        import tempfile as _tf
+        with _tf.TemporaryDirectory() as td:
+            tdp = Path(td)
+            (tdp / "bare.json").write_text(json.dumps(
+                {"ShortName": "BARE_UMM", "Abstract": "x",
+                 "DOI": {"DOI": "10.5067/Y"}}))
+            (tdp / "item.json").write_text(json.dumps(
+                {"umm": {"ShortName": "WRAPPED", "Abstract": "y"}}))
+            (tdp / "envelope.json").write_text(json.dumps(
+                {"items": [{"umm": {"ShortName": "ENV1", "Abstract": "z"}},
+                           {"umm": {"ShortName": "ENV2", "Abstract": "w"}}]}))
+            (tdp / "junk.json").write_text('{"not": "a record"}')
+            local = read_local([tdp / "bare.json", tdp / "item.json",
+                                tdp / "envelope.json", tdp / "junk.json",
+                                tdp / "missing.json"])
+            ok = ok and [e["short_name"] for e in local] == [
+                "BARE_UMM", "WRAPPED", "ENV1", "ENV2"]
+            ok = ok and all(e.get("source_file") for e in local)
+            lt = tally(local, rules)
+            # Every local record lacks spatial and temporal extents, so
+            # both MUST rules fail and the CI lever must trip.
+            ok = ok and must_failures(lt) == ["req-spatial-extent",
+                                              "req-temporal-extent"]
+            ok = ok and must_failures(tally([SELFTEST_ENTRIES[0]], rules)) == []
         report("SELFTEST", len(SELFTEST_ENTRIES), t, None)
         print("selftest:", "PASS" if ok else "FAIL")
         return 0 if ok else 1
 
-    for provider in args.providers:
-        entries = fetch_provider(provider, args.page_size, args.max_pages)
-        report(provider, len(entries), tally(entries, rules), args.out_dir)
+    selectors = [bool(args.files), bool(args.short_names), bool(args.providers)]
+    if sum(selectors) > 1:
+        ap.error("choose one of --files, --short-names, or --providers")
+
+    failed_must = []
+    if args.files:
+        entries = read_local(args.files)
+        if not entries:
+            print("no readable UMM-C records in the named files", file=sys.stderr)
+            return 2
+        tallies = tally(entries, rules)
+        report("LOCAL", len(entries), tallies, args.out_dir)
+        failed_must = must_failures(tallies)
+    elif args.short_names:
+        entries = fetch_short_names(args.short_names)
+        if not entries:
+            print("no registered collections matched", file=sys.stderr)
+            return 2
+        tallies = tally(entries, rules)
+        report("SUBSET", len(entries), tallies, args.out_dir)
+        failed_must = must_failures(tallies)
+    else:
+        for provider in args.providers or ["POCLOUD"]:
+            entries = fetch_provider(provider, args.page_size, args.max_pages)
+            tallies = tally(entries, rules)
+            report(provider, len(entries), tallies, args.out_dir)
+            failed_must += must_failures(tallies)
+
+    if args.fail_on_must and failed_must:
+        print("FAIL: MUST-class rules with failing records: "
+              + ", ".join(sorted(set(failed_must))))
+        return 1
     return 0
 
 

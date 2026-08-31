@@ -191,8 +191,12 @@ def attest(receipt_path: Path, max_errors: int, skip_env_checks: bool) -> int:
             print("FAIL A5: record revisions unverifiable, failing "
                   "closed (register R6): " + "; ".join(rc["unverifiable"]))
             return 1
-        print(f"PASS run {r.get('run_id', '?')}: pinned version, ruleset "
-              f"and record revisions verified, errors {errors} <= {max_errors}")
+        bound = [rec for rec in (r.get("records") or []) if rec.get("concept_id")]
+        scope = ("ruleset and record revisions verified" if bound else
+                 "ruleset verified; no registered records to revision-bind "
+                 "(file-based run)")
+        print(f"PASS run {r.get('run_id', '?')}: pinned version, {scope}, "
+              f"errors {errors} <= {max_errors}")
     else:
         print(f"PASS run {r.get('run_id', '?')}: receipt internally "
               f"consistent (env and revision checks SKIPPED; never the "
