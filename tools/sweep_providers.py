@@ -67,22 +67,43 @@ STRUCTURAL = {
 }
 
 
+# Register R5: an ALLOWLIST, not a denylist. The round 1 fix escaped
+# three markdown-active characters and was wrong, because brackets,
+# parentheses, bangs, asterisks and underscores survive JSON quoting
+# too, and the same change removed the backtick wrapping that had been
+# holding them inert. A crafted ShortName could then render an
+# auto-loading image from an attacker's host inside a report the
+# publication policy promises to deliver privately. Only these
+# characters now pass through as themselves.
+LABEL_SAFE = frozenset(
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ._-")
+LABEL_MAX = 200
+
+
 def safe_label(value) -> str:
     """Render a record label as inert quoted data (register R5).
 
-    ShortNames are third-party strings. json.dumps escapes newlines and
-    quotes so nothing can reach the start of a line and forge a heading;
-    the three markdown-active characters that survive quoting are then
-    escaped to their unicode form, so no backtick, tag, or comment
-    marker is ever rendered as markup. A non-string value is stringified
-    first, so a crafted numeric or null ShortName cannot crash sorting
-    or rendering."""
+    ShortNames are third-party strings that reach a markdown report a
+    human reads. Every character outside LABEL_SAFE becomes its unicode
+    escape, so no markdown or HTML construct can be formed at all: no
+    heading, code span, link, image, or tag. Real ShortNames
+    (ECCO_L4_SSH_LLC0090GRID_MONTHLY_V4R4, MUR-JPL-L4-GLOB-v4.1,
+    ASCATA-L2-25km) pass through unchanged. A non-string value is
+    stringified first and an overlong one is bounded, so neither can
+    crash rendering or flood the report."""
     if not isinstance(value, str):
         value = str(value)
-    out = json.dumps(value)
-    for ch, esc in (("`", "\\u0060"), ("<", "\\u003c"), (">", "\\u003e")):
-        out = out.replace(ch, esc)
-    return out
+    truncated = len(value) > LABEL_MAX
+    value = value[:LABEL_MAX]
+    out = []
+    for ch in value:
+        if ch in LABEL_SAFE:
+            out.append(ch)
+        elif ord(ch) < 0x10000:
+            out.append("\\u%04x" % ord(ch))
+        else:
+            out.append("\\U%08x" % ord(ch))
+    return '"' + "".join(out) + ('... truncated"' if truncated else '"')
 
 
 def flatten_umm(item: dict) -> dict:
@@ -172,6 +193,13 @@ def read_local(paths: list) -> list:
                 continue
             if "umm" not in item and "ShortName" in item:
                 item = {"umm": item}
+            elif "umm" not in item:
+                # Neither a umm item nor a bare record: counting it
+                # would invent a failing collection out of nothing
+                # (round 2 note).
+                problems.append(f"{path}: item {n} carries no umm object "
+                                "and no ShortName")
+                continue
             e = flatten_umm(item)
             e["source_file"] = str(path)
             e["short_name"] = e.get("short_name") or f"(no ShortName in {path})"
@@ -375,6 +403,25 @@ def main() -> int:
             rendered = safe_label(hostile)
             ok = ok and "\n" not in rendered and "`" not in rendered
             ok = ok and "<" not in rendered and ">" not in rendered
+            # Round 2 finding: link and image syntax survives JSON
+            # quoting, so an allowlist is the only safe rendering. A
+            # beacon image would be a read receipt on a report the
+            # policy promises to deliver privately.
+            beacon = ('![beacon](http://evil.example/track.png) '
+                      '[phish](http://evil.example/login)')
+            r2 = safe_label(beacon)
+            ok = ok and not any(c in r2 for c in "![]()*:/")
+            # Real ShortNames survive the allowlist unchanged.
+            for real in ("ECCO_L4_SSH_LLC0090GRID_MONTHLY_V4R4",
+                         "MUR-JPL-L4-GLOB-v4.1", "ASCATA-L2-25km"):
+                ok = ok and safe_label(real) == '"' + real + '"'
+            # Overlong labels are bounded rather than flooding a report.
+            ok = ok and safe_label("A" * 5000).endswith('... truncated"')
+            ok = ok and len(safe_label("A" * 5000)) < 260
+            # A non-record object in an items list must not become a
+            # phantom failing collection (round 2 note).
+            (tdp / "phantom.json").write_text('{"items": [{"meta": {"x": 1}}]}')
+            ok = ok and read_local([tdp / "phantom.json"]) == []
             local = read_local([tdp / "bare.json", tdp / "item.json",
                                 tdp / "envelope.json", tdp / "junk.json",
                                 tdp / "missing.json"])

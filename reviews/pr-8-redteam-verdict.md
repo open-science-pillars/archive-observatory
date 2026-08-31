@@ -223,3 +223,160 @@ sits on the badge trust root. Finding 5 is a latent tier hole that no
 documented command walks into, and the red team will not hold round 2
 hostage to it if the builder prefers to answer it with a note rather
 than a change.
+
+# Red-team verdict: PR 8 (producer workflows), round 2
+
+VERDICT: BLOCK
+
+All five round 1 findings are genuinely fixed, each verified against
+6a9345f by re-running the round 1 attack rather than by reading the
+diff. One new finding, introduced by the F1 fix itself, is the whole of
+this verdict. It is narrow and it is roughly a one line change, and
+because this is the final round under the contract, a BLOCK here is the
+handoff to the human steward rather than a request for a round 3. Both
+positions are summarized at the end so the steward can rule quickly.
+
+## Finding 6 (R5): safe_label neutralizes line structure but not inline markdown, and the label is no longer code-wrapped
+
+The builder's account says safe_label "escapes the three markdown-active
+characters that survive quoting (backtick, less-than, greater-than)".
+Those are not the only markdown-active characters that survive
+`json.dumps`. Bracket, parenthesis, bang, asterisk and underscore all
+survive it too, and the same commit removed the backtick wrapping that
+had been holding them inert.
+
+Verified, a ShortName of
+
+    ![beacon](http://evil.example/track.png) [phish](http://evil.example/login) *em* _u_
+
+renders in the detail file as one line reading
+
+    - "![beacon](http://evil.example/track.png) [phish](http://evil.example/login) *em* _u_"
+
+with every character of the image and link syntax intact. Those double
+quotes are literal text, not a code span, so a markdown renderer treats
+the line as prose: the image auto-loads from the attacker's host and the
+link is clickable.
+
+Attack: a producer or a third party hands the observatory a draft record
+whose ShortName carries an image reference. The observatory runs
+`--files`, and the private detail file it produces fetches the
+attacker's URL the moment anyone opens it in a renderer, which is a read
+receipt on a document the publication policy promises to deliver
+privately to a named provider, complete with the reader's address and
+the time they opened it. The link variant puts an attacker-chosen
+destination inside a document carrying the OSP non-affiliation line, in
+front of an archive contact, which is R7 exposure on top of R5.
+
+Precision on what changed, because the direction matters. Round 1's
+break-out is fully closed: `json.dumps` escapes the newlines, so no
+forged heading can reach the start of a line, and the crafted record
+from round 1 now renders as four inert quoted lines with zero forged
+headings, zero comment markers and zero backticks, all confirmed by
+inspecting the file. Against that, the inline vector widened. On main a
+label needed to contain a backtick to escape the code span before a link
+would render; after this commit nothing is code-wrapped, so a plain
+ShortName with no backtick at all is enough. The commit is a large net
+improvement and it still leaves an attacker-controlled URL rendering in
+the delivered artifact.
+
+Fix direction (the builder fixes, not the red team): the escape tuple is
+the wrong shape for the job, since it enumerates dangerous characters
+and will keep missing some. ShortNames are in practice an alphanumeric,
+dot, dash and underscore vocabulary, so an allowlist that replaces
+everything outside it, applied after the existing quoting, closes this
+class rather than this instance. Restoring a code span around the
+already-escaped label would also work, given the backtick is now escaped
+before it gets there. A length bound belongs in the same function; the
+label is still unbounded, and a multi-megabyte ShortName becomes a
+multi-megabyte line.
+
+## Round 1 findings, each re-attacked and each resolved
+
+- F1 (R5 injection): resolved on the vector that blocked. The round 1
+  record, byte for byte, now produces a detail file with four true
+  headings, no `0 failing` forgery, no `<!--` marker and no backtick
+  anywhere; the hostile payload sits inside one quoted line per rule.
+  Finding 6 is the remainder, not a reopening.
+- F2 (R5 robustness): resolved, fully. All six crashers were run
+  together in one invocation. Every one is named on stderr with its
+  specific reason (`item 0 is not an object`, `item 0 has a non-object
+  umm`, `unreadable (UnicodeDecodeError)`, `unreadable
+  (RecursionError)`), zero tracebacks, and the run exits 2. The
+  non-string ShortName beside a string one now completes at exit 0
+  instead of dying in `sorted()`. The 0/1/2 contract was verified
+  directly, all three codes, and USING.md's new table states it
+  correctly. The CI confusion I named is gone: a malfunction is 2 and a
+  finding is 1.
+- F3 (R11): resolved, and confirmed by the same probe that failed in
+  round 1. Replacing the body of `revision_scope` with a raise now
+  fails the selftest at exit 1, where in round 1 the identical
+  sabotage printed `selftest: PASS` at exit 0. The three assertions
+  cover bound, file-based and empty record lists.
+- F4 (R6): resolved, and I verified the ordering the builder flagged
+  rather than taking it on report. Stubbing `quarc_attest.attest` to
+  raise on entry, `emit` on a file-based receipt with the opt-in
+  present returned 1 with the specific message and never reached the
+  stub, proving the refusal precedes attestation and does not depend on
+  a hash mismatch tripping A2 first. No badges directory is created.
+  The builder disclosing that his own first version of this test passed
+  for the wrong reason is the R11 norm working as designed, and it is
+  worth the record that he caught it himself.
+- F5 (R1): resolved. Local output is now
+  `LOCAL-<date>-aggregate-PRIVATE.txt` beside the detail file, the
+  console states the results are per-collection and not the public
+  tier absent the named provider's written opt-in, and the scheduled
+  workflow's `*-aggregate.txt` shape does not match the new name,
+  confirmed by expanding the glob against a real run's output.
+  Whole-provider sweeps still produce the publishable aggregate, so the
+  policy's default public tier is unchanged.
+
+## Register walk, round 2
+
+- R2, re-verified because `safe_label` touched `tally`. The three cases
+  still behave exactly as USING.md says: MUSTs passing with SHOULDs
+  failing exits 0, a verified-source MUST failing exits 1, and the same
+  record against an `esdis-doc-pending` seed exits 0. The selftest
+  assertion updated to the quoted form is a correct consequence of the
+  render change, not a weakened test.
+- R4, unchanged by this commit; no request path was touched.
+- R6, strengthened. The badge tool now has three explicit refusals, all
+  returning 1, and the file-based case is covered by a selftest that
+  exercises the real path.
+- R7, the new prose is good and worth naming. "Your own drafts are
+  yours; nothing here publishes them" and the per-collection console
+  note are mirror language, and the badge refusal explains the reason
+  rather than asserting a rule.
+- R10, clean; ci.yml's exact grep finds nothing across the tree.
+- R11, all four selftests run unmasked in the gates step and all four
+  exit 0, read directly and not through a pipe.
+- R9, this round appends to reviews/pr-8-redteam-verdict.md, bound to
+  PR 8, and it is round 2 of the maximum two.
+
+Noted, not a finding, so it does not block: an object inside an `items`
+list that is neither a umm item nor a bare record, for example
+`{"items": [{"meta": {"x": 1}}]}`, passes both new shape guards and
+becomes a phantom entry counted as one collection failing every rule,
+labeled with its source path. Nothing crashes, nothing publishes, and
+it is the producer's own file, but it inflates their count and
+manufactures failures for a thing that is not a record, which sits a
+little against the "named and skipped, never guessed at" promise.
+
+## For the steward
+
+The case for shipping now: every finding that blocked in round 1 is
+closed, the heading forgery and the agent-addressed instruction are
+gone, the exit-code contract is a real improvement for producers, and
+Finding 6 lands only in a private file whose usual reader is the
+producer who wrote the record.
+
+The case for holding: the artifact still renders an attacker-controlled
+URL, an image reference beacons the moment a provider opens the private
+report, the builder's own description of the fix is factually wrong
+about which characters survive quoting, and the correction is one line
+in one function that already exists for exactly this purpose.
+
+The red team's recommendation is to hold for that one line, because it
+is cheaper than the follow-up issue, but this is a narrow call on a
+commit that fixed five findings well, and shipping with Finding 6
+tracked would not be unreasonable.
