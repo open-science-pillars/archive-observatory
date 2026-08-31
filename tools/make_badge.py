@@ -8,7 +8,8 @@
 # environment, and the badge path never runs a lesser attest.
 """Emit a shields.io endpoint badge for one attested pyQuARC receipt.
 
-The kit-2 pattern over quarc receipts, bound by register R1 and R6:
+Badges follow the same shape as the budget-closure badge: a receipt
+is the only thing that can produce one. Bound by register R1 and R6:
 - R1: refuses unless the provider's written opt-in exists at
   optin/<PROVIDER>.md; badges are strictly opt-in.
 - R6: refuses unless a FULL attest of the receipt passes in this

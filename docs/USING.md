@@ -89,8 +89,11 @@ submission on its own terms:
         --files draft-collection.json --fail-on-must
 
 A MUST candidate that is held at SHOULD* for want of a verified
-citation (register R2) deliberately does not break your build; only
-rules whose mandate is cited do.
+citation deliberately does not break your build; only rules whose
+mandate is cited do. (Parenthetical R-numbers throughout this guide,
+like register R2 here, point at rows of RED-TEAM.md in this
+repository: the attack each control exists to stop, and why it works
+the way it does.)
 
 Exit codes are distinct on purpose, so your pipeline can tell a
 finding from a malfunction:

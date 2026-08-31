@@ -30,7 +30,7 @@ archives, not an audit performed on them.
 - **Provenance tiers never inflate.** Fitness verdicts
   (tools/fitness_attest.py) record how each declaration was produced;
   hand-declared says so plainly, and the capsule-derived tier is
-  refused until capsules exist (kit 15 composition contract), so no
+  refused until capsules exist, so no
   receipt implies assurance that does not exist.
 
 ## The register
