@@ -85,19 +85,27 @@ def current_revision(concept_id: str):
         return None
 
 
-def revision_mismatches(records, fetch=None) -> list:
-    """Register R6: records carrying a revision_id are checked against
-    CMR now; a receipt bound to a superseded revision must not attest."""
+def revision_check(records, fetch=None) -> dict:
+    """Register R6, hardened per the PR 1 round 2 closest call: a
+    record with a concept id whose current revision cannot be verified
+    (no revision_id recorded, or CMR unreachable) is UNVERIFIABLE and
+    fails closed in a full attest; it is never silently skipped.
+    File-based records carry no concept id and have nothing to bind."""
     fetch = fetch or current_revision
-    bad = []
+    out = {"mismatched": [], "unverifiable": []}
     for rec in records or []:
         cid, rev = rec.get("concept_id"), rec.get("revision_id")
-        if not cid or rev is None:
+        if not cid:
+            continue
+        if rev is None:
+            out["unverifiable"].append(f"{cid}: no revision_id recorded")
             continue
         now = fetch(cid)
-        if now is not None and str(now) != str(rev):
-            bad.append(f"{cid}: receipt revision {rev}, CMR now {now}")
-    return bad
+        if now is None:
+            out["unverifiable"].append(f"{cid}: current revision unreachable")
+        elif str(now) != str(rev):
+            out["mismatched"].append(f"{cid}: receipt revision {rev}, CMR now {now}")
+    return out
 
 
 def severity_counts(results) -> dict:
@@ -174,10 +182,14 @@ def attest(receipt_path: Path, max_errors: int, skip_env_checks: bool) -> int:
         print(f"FAIL A3: {errors} error-severity findings exceed {max_errors}")
         return 1
     if not skip_env_checks:
-        bad = revision_mismatches(r.get("records"))
-        if bad:
+        rc = revision_check(r.get("records"))
+        if rc["mismatched"]:
             print("FAIL A4: record revisions no longer match CMR "
-                  "(register R6): " + "; ".join(bad))
+                  "(register R6): " + "; ".join(rc["mismatched"]))
+            return 1
+        if rc["unverifiable"]:
+            print("FAIL A5: record revisions unverifiable, failing "
+                  "closed (register R6): " + "; ".join(rc["unverifiable"]))
             return 1
         print(f"PASS run {r.get('run_id', '?')}: pinned version, ruleset "
               f"and record revisions verified, errors {errors} <= {max_errors}")
@@ -209,12 +221,19 @@ def selftest() -> int:
                 "cmr_validation": {"errors": [], "warnings": ["w1"]},
                 "pyquarc_errors": []}]
     ok = ok and severity_counts(crafted) == {"error": 1, "warning": 1, "info": 0}
-    ok = ok and revision_mismatches(
-        [{"concept_id": "C1-X", "revision_id": "3"}],
-        fetch=lambda cid: "5") == ["C1-X: receipt revision 3, CMR now 5"]
-    ok = ok and revision_mismatches(
-        [{"concept_id": "C1-X", "revision_id": "3"}],
-        fetch=lambda cid: "3") == []
+    rc = revision_check([{"concept_id": "C1-X", "revision_id": "3"}],
+                        fetch=lambda cid: "5")
+    ok = ok and rc["mismatched"] == ["C1-X: receipt revision 3, CMR now 5"]
+    rc = revision_check([{"concept_id": "C1-X", "revision_id": "3"}],
+                        fetch=lambda cid: "3")
+    ok = ok and rc == {"mismatched": [], "unverifiable": []}
+    rc = revision_check([{"concept_id": "C1-X", "revision_id": None}],
+                        fetch=lambda cid: "3")
+    ok = ok and rc["unverifiable"] == ["C1-X: no revision_id recorded"]
+    rc = revision_check([{"concept_id": "C1-X", "revision_id": "3"}],
+                        fetch=lambda cid: None)
+    ok = ok and rc["unverifiable"] == ["C1-X: current revision unreachable"]
+    ok = ok and revision_check([{"file": "x.json"}]) == {"mismatched": [], "unverifiable": []}
     print("selftest:", "PASS" if ok else "FAIL")
     return 0 if ok else 1
 

@@ -63,7 +63,15 @@ def flatten_umm(item: dict) -> dict:
     """One flat entry per umm_json item; a DOI object whose DOI key is
     absent (MissingReason form) correctly reads as no DOI."""
     umm = item.get("umm", {}) or {}
+    doi_obj = umm.get("DOI")
+    if isinstance(doi_obj, dict) and doi_obj.get("DOI"):
+        doi_state = "registered"
+    elif isinstance(doi_obj, dict) and doi_obj.get("MissingReason"):
+        doi_state = "missing-reason declared"
+    else:
+        doi_state = "malformed or absent"
     return {
+        "doi_state": doi_state,
         "short_name": umm.get("ShortName"),
         "doi": (umm.get("DOI") or {}).get("DOI"),
         "spatial": umm.get("SpatialExtent"),
@@ -74,11 +82,11 @@ def flatten_umm(item: dict) -> dict:
 
 
 SELFTEST_ENTRIES = [
-    {"short_name": "GOOD", "doi": "10.5067/X", "spatial": {"HorizontalSpatialDomain": {}},
+    {"short_name": "GOOD", "doi": "10.5067/X", "doi_state": "registered", "spatial": {"HorizontalSpatialDomain": {}},
      "temporal": [{"RangeDateTimes": []}], "abstract": "fine", "related_urls": [{"URL": "x"}]},
-    {"short_name": "NO_DOI", "spatial": {"HorizontalSpatialDomain": {}},
+    {"short_name": "NO_DOI", "doi_state": "missing-reason declared", "spatial": {"HorizontalSpatialDomain": {}},
      "temporal": [{"RangeDateTimes": []}], "abstract": "fine", "related_urls": [{"URL": "x"}]},
-    {"short_name": "BARE", "abstract": ""},
+    {"short_name": "BARE", "doi_state": "malformed or absent", "abstract": ""},
 ]
 
 
@@ -120,6 +128,12 @@ def fetch_provider(provider: str, page_size: int, max_pages: int) -> list:
 
 def tally(entries: list, rules: dict) -> dict:
     out = {rid: {"pass": 0, "fail": [], "class": r["class"]} for rid, r in rules.items()}
+    if "req-doi" in out:
+        states = {}
+        for e in entries:
+            s = e.get("doi_state", "unknown")
+            states[s] = states.get(s, 0) + 1
+        out["req-doi"]["states"] = states
     for e in entries:
         for rid, r in rules.items():
             if r["fn"](e):
@@ -139,6 +153,9 @@ def report(provider: str, n: int, tallies: dict, out_dir: Path | None):
     for rid, t in sorted(tallies.items()):
         pct = (100.0 * t["pass"] / n) if n else 0.0
         agg.append(f"  {rid:<26} [{t['class']:<6}] {t['pass']}/{n} ({pct:.1f} percent)")
+        if t.get("states"):
+            agg.append("      states: " + ", ".join(
+                f"{k} {v}" for k, v in sorted(t["states"].items())))
         if t["fail"]:
             detail.append(f"## {rid} ({t['class']}): {len(t['fail'])} failing")
             detail += [f"- `{sn}`" for sn in sorted(t["fail"])[:200]]
@@ -184,7 +201,9 @@ def main() -> int:
                      "    check: {binding: cmr-structural, id: doi-present}\n")
         gate = load_rules(Path(tf.name))
         Path(tf.name).unlink()  # red-team tidiness note, PR 2 verdict
-        ok = (gate["r-gate"]["class"] == "SHOULD*"
+        ok = (t["req-doi"].get("states") == {"registered": 1,
+              "missing-reason declared": 1, "malformed or absent": 1}
+              and gate["r-gate"]["class"] == "SHOULD*"
               and rules["req-doi"]["class"] == "SHOULD"
               and t["req-doi"]["pass"] == 1 and "NO_DOI" in t["req-doi"]["fail"]
               and t["req-temporal-extent"]["pass"] == 2
