@@ -7,7 +7,7 @@ uv (https://docs.astral.sh/uv/), and every tool carries its own
 pinned dependencies in its PEP 723 header. Run every command from the
 repository root.
 
-## The four tools, in one look
+## The tools, in one look
 
 | Tool | What it does | Credential-free |
 |---|---|---|
@@ -15,14 +15,16 @@ repository root.
 | tools/quarc_attest.py | pyQuARC run on collections, receipt with pinned identity, deterministic attestation | yes |
 | tools/make_badge.py | Shields badge from an attested receipt; strictly opt-in | yes |
 | tools/fitness_attest.py | Can-I-use-X-for-Y verdicts against signed validity domains | yes |
+| tools/seed_check.py | Holds the rules seed to the esdis requirement concepts, field by field | yes |
 
-Selftests for all four run in CI on every push; run them yourself the
-same way CI does:
+Selftests for every tool run in CI on every push; run them yourself
+the same way CI does:
 
     uv run tools/sweep_providers.py data/requirements-seed.yaml --selftest
     uv run tools/quarc_attest.py --selftest
     uv run tools/make_badge.py --selftest
     uv run tools/fitness_attest.py --selftest
+    uv run tools/seed_check.py --selftest
 
 ## What has to be registered, and what does not
 
@@ -151,6 +153,22 @@ Rule classes come from data/requirements-seed.yaml: MUST means a
 verified citation to an authoritative document; SHOULD means an
 attributed practice. A MUST whose source section is not verified is
 demoted to SHOULD* at load time; that gate is code, not convention.
+
+The seed is not where a rule is authored. The esdis requirement
+concepts in the nasa-daac-knowledge repository (knowledge/esdis/
+requirements/) are the authority: each seed rule names its concept,
+and tools/seed_check.py compares the rule's statement, class, cited
+sources and check binding with that concept exactly, with no room for
+paraphrase (register R2). CI checks the public knowledge repository
+out beside this one and runs the comparison on every push; locally it
+reads a sibling clone by default, or any bundle root you name:
+
+    uv run tools/seed_check.py data/requirements-seed.yaml \
+      --concepts ../nasa-daac-knowledge/knowledge/esdis
+
+A disagreement prints the rule, the field, and both values, and exits
+1. The fix goes in the seed when the seed drifted, and starts in the
+concept when the requirement itself changed.
 
 ## Run pyQuARC and attest the receipt
 

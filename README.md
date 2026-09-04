@@ -23,8 +23,12 @@ archives, not an audit performed on them.
   environment (register R3, R6).
 - **Rules carry provenance.** MUST means a documented requirement with
   a verified source citation; SHOULD means an attributed best practice,
-  never presented as a mandate (register R2). Rule disagreements route
-  upstream, held out of publication until resolved.
+  never presented as a mandate (register R2). The rules are authored
+  as requirement concepts in the esdis bundle of nasa-daac-knowledge;
+  data/requirements-seed.yaml is checked against those concepts in CI
+  (tools/seed_check.py), so the concepts are the authority and the
+  seed follows them. Rule disagreements route upstream, held out of
+  publication until resolved.
 - **No LLM in the gate path.** Sweep, harness, and attester are
   deterministic; metadata is rendered as quoted data (register R5).
 - **Provenance tiers never inflate.** Fitness verdicts
@@ -47,6 +51,7 @@ tools/sweep_providers.py     structural sweep over CMR collections.umm_json
 tools/quarc_attest.py        pinned pyQuARC runner, receipts, attester
 tools/make_badge.py          opt-in badge from an attested receipt
 tools/fitness_attest.py      can-I-use-X-for-Y verdicts from signed domains
+tools/seed_check.py          holds the rules seed to the esdis concepts
 data/requirements-seed.yaml  MUST/SHOULD rules with provenance gating
 data/claim-classes.yaml      the governed claim-class vocabulary
 docs/USING.md                the operator's guide (start here to run things)
@@ -58,7 +63,7 @@ templates/provider-report.md the private-first receipted report
 .github/workflows/           ci.yml (gates) and sweep.yml (monthly aggregate)
 ```
 
-New here and want to run something? docs/USING.md walks all four
+New here and want to run something? docs/USING.md walks the
 tools from clone to first receipt, credential-free (python via uv
 only; the PEP 723 blocks carry the pins).
 
