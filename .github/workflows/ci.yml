@@ -12,6 +12,7 @@ jobs:
           uv run tools/quarc_attest.py --selftest
           uv run tools/make_badge.py --selftest
           uv run tools/fitness_attest.py --selftest
+          uv run tools/seed_check.py --selftest
       - name: Credential-free invariant (red-team R10)
         # Tree-wide, all file types, all register patterns including
         # token. Excluded: this file and RED-TEAM.md, whose pattern
@@ -24,3 +25,23 @@ jobs:
       - name: Red-team verdict bound to this PR (red-team R9)
         if: github.event_name == 'pull_request'
         run: test -f "reviews/pr-${{ github.event.pull_request.number }}-redteam-verdict.md"
+  seed-agrees-with-concepts:
+    # The esdis requirement concepts are the authority for the rules
+    # seed (red-team R2). The public knowledge repository is checked
+    # out beside this one, in a job of its own so its tree never sits
+    # under the credential grep above, and the seed is compared with
+    # the concepts field by field. No secrets, no login: a public
+    # read-only checkout and a tool that reads disk.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: open-science-pillars/nasa-daac-knowledge
+          path: nasa-daac-knowledge
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v4
+      - name: Seed agrees with the esdis concepts (red-team R2)
+        run: |
+          uv run tools/seed_check.py data/requirements-seed.yaml \
+            --concepts nasa-daac-knowledge/knowledge/esdis

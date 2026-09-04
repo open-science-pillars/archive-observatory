@@ -156,9 +156,15 @@ def load_rules(path: Path) -> dict:
         if r.get("check", {}).get("binding") == "cmr-structural":
             cid = r["check"]["id"]
             if cid not in STRUCTURAL:
-                print(f"WARN: rule {r['id']} binds unknown structural check {cid}",
-                      file=sys.stderr)
-                continue
+                # Register R12, with a rule in place of a record: a
+                # rule this sweeper cannot execute is refused before
+                # any sweep, never dropped on stderr and reported over.
+                raise ValueError(
+                    f"rule {r['id']} binds structural check {cid!r}, which "
+                    f"this sweeper does not implement (has "
+                    f"{sorted(STRUCTURAL)}); the seed is held to its "
+                    "concepts by tools/seed_check.py, and a check the "
+                    "concept names must exist here before the rule does")
             cls = r["class"]
             section = str((r.get("source") or {}).get("section", ""))
             if cls == "MUST" and section != "verified":
@@ -365,7 +371,11 @@ def main() -> int:
     ap.add_argument("--selftest", action="store_true")
     args = ap.parse_args()
 
-    rules = load_rules(args.rules_seed)
+    try:
+        rules = load_rules(args.rules_seed)
+    except ValueError as exc:
+        print(f"sweep_providers: {exc}", file=sys.stderr)
+        return 2
     if not rules:
         print("no cmr-structural rules in the seed", file=sys.stderr)
         return 2
@@ -380,9 +390,23 @@ def main() -> int:
                      "    check: {binding: cmr-structural, id: doi-present}\n")
         gate = load_rules(Path(tf.name))
         Path(tf.name).unlink()  # red-team tidiness note, PR 2 verdict
+        # A rule binding a check this file does not implement is
+        # refused at load, not warned past (register R12 for rules).
+        with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as tf:
+            tf.write("rules:\n  - id: r-ghost\n    class: MUST\n"
+                     "    statement: synthetic\n"
+                     "    source: {doc: pending, section: verified}\n"
+                     "    check: {binding: cmr-structural, id: ghost-present}\n")
+        try:
+            load_rules(Path(tf.name))
+            refused = False
+        except ValueError:
+            refused = True
+        Path(tf.name).unlink()
         ok = (t["req-doi"].get("states") == {"registered": 1,
               "missing-reason declared": 1, "malformed or absent": 1}
               and gate["r-gate"]["class"] == "SHOULD*"
+              and refused
               and rules["req-doi"]["class"] == "SHOULD"
               # Labels are inert quoted data since the R5 fix, so the
               # expected value carries its quotes.

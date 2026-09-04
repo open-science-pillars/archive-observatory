@@ -5,46 +5,61 @@
 #            presented as a mandate
 # check.binding: cmr-structural (sweep_providers.py) or pyquarc
 # (quarc_attest.py; check ids mapped during the SET co-build).
+#
+# The esdis requirement concepts (nasa-daac-knowledge, knowledge/esdis/
+# requirements/) are the authority for every field below. Each rule
+# names its concept (path relative to that bundle root); statement,
+# class, source.cites and check are checked against the concept by
+# tools/seed_check.py, which CI runs. A change of wording, class,
+# source or binding starts in the concept, and the seed follows.
 meta:
   compiled_outputs: [pyquarc rules_override (generated, never hand-edited)]
 rules:
   - id: req-doi
+    concept: requirements/doi-registered.md
     class: SHOULD
-    statement: Public collections carry a registered DOI (reviewed practice; the UMM-C DOI element accepts a MissingReason, so no schema mandate exists).
-    source: {doc: "librarian pass 2026-08-30: DOI process page (eligibility), DPDG ESDS-RFC-041 (Suggested Practice), UMM DoiType oneOf MissingReason; concept esdis/requirements/doi-registered.md", section: attributed}
+    statement: Public EOSDIS collections carry registered DOIs as reviewed practice and near-universal reality, and machine citation depends on the DOI recorded in CMR metadata.
+    source: {doc: "librarian pass 2026-08-30: DOI process page (eligibility), DPDG ESDS-RFC-041 (Suggested Practice), UMM DoiType oneOf MissingReason", cites: [doi-process, dpdg-rfc041, umm-cmn-doitype], section: attributed}
     check: {binding: cmr-structural, id: doi-present}
   - id: req-temporal-extent
+    concept: requirements/temporal-extent.md
     class: MUST
     statement: Collection metadata declares its temporal extent.
-    source: {doc: "UMM-C JSON schema v1.18.4 top-level required array, cdn.earthdata.nasa.gov, fetched 2026-08-30", section: verified}
+    source: {doc: "UMM-C JSON schema v1.18.4 top-level required array, cdn.earthdata.nasa.gov, fetched 2026-08-30", cites: [umm-c-schema], section: verified}
     check: {binding: cmr-structural, id: temporal-extent-present}
   - id: req-spatial-extent
+    concept: requirements/spatial-extent.md
     class: MUST
     statement: Collection metadata declares its spatial extent.
-    source: {doc: "UMM-C JSON schema v1.18.4 top-level required array, cdn.earthdata.nasa.gov, fetched 2026-08-30", section: verified}
+    source: {doc: "UMM-C JSON schema v1.18.4 top-level required array, cdn.earthdata.nasa.gov, fetched 2026-08-30", cites: [umm-c-schema], section: verified}
     check: {binding: cmr-structural, id: spatial-extent-present}
   - id: req-abstract
+    concept: requirements/abstract-informative.md
     class: SHOULD
-    statement: The abstract is present and informative (ARC completeness).
-    source: {doc: ARC metadata quality framework, section: attributed}
+    statement: The abstract is present and accurately describes the data.
+    source: {doc: ARC metadata quality framework, cites: [arc-paper], section: attributed}
     check: {binding: cmr-structural, id: abstract-present}
   - id: req-related-urls
+    concept: requirements/related-urls-present.md
     class: SHOULD
-    statement: Related URLs are present (documentation, access, citation).
-    source: {doc: ARC metadata quality framework, section: attributed}
+    statement: Related URLs present
+    source: {doc: ARC metadata quality framework, cites: [arc-paper], section: attributed}
     check: {binding: cmr-structural, id: related-urls-present}
   - id: req-gcmd-keywords-valid
+    concept: requirements/gcmd-keywords-valid.md
     class: SHOULD
     statement: Platform and instrument keywords resolve in GCMD KMS.
-    source: {doc: ARC framework and GCMD governance, section: attributed}
+    source: {doc: ARC framework and GCMD governance, cites: [arc-paper, gcmd-governance], section: attributed}
     check: {binding: pyquarc, id: co-build-map}
   - id: req-links-resolve
+    concept: requirements/links-resolve.md
     class: SHOULD
     statement: Related URLs resolve without error.
-    source: {doc: ARC framework, section: attributed}
+    source: {doc: ARC framework, cites: [arc-paper], section: attributed}
     check: {binding: pyquarc, id: co-build-map}
   - id: req-collection-granule-consistency
+    concept: requirements/collection-granule-consistency.md
     class: SHOULD
     statement: Collection and granule metadata agree on shared fields.
-    source: {doc: ARC framework, section: attributed}
+    source: {doc: ARC framework, cites: [arc-paper], section: attributed}
     check: {binding: pyquarc, id: co-build-map}
