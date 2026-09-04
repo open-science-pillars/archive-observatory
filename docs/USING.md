@@ -159,16 +159,25 @@ concepts in the nasa-daac-knowledge repository (knowledge/esdis/
 requirements/) are the authority: each seed rule names its concept,
 and tools/seed_check.py compares the rule's statement, class, cited
 sources and check binding with that concept exactly, with no room for
-paraphrase (register R2). CI checks the public knowledge repository
-out beside this one and runs the comparison on every push; locally it
-reads a sibling clone by default, or any bundle root you name:
+paraphrase (register R2). It also listens for the ways a concept stops
+being an authority: a deprecated concept may hold no rule (retire it,
+or follow superseded_by), a disputed concept must be mirrored by the
+same disputed key on its rule, a passed stale_after is printed as a
+STALE line and counted, and a cmr-structural id must be one
+tools/sweep_providers.py implements, so a rule the seed and the
+concept agree on is a rule that runs (register R12). CI checks the
+public knowledge repository out beside this one and runs the
+comparison on every push; locally it reads a sibling clone by
+default, or any bundle root you name:
 
     uv run tools/seed_check.py data/requirements-seed.yaml \
       --concepts ../nasa-daac-knowledge/knowledge/esdis
 
 A disagreement prints the rule, the field, and both values, and exits
 1. The fix goes in the seed when the seed drifted, and starts in the
-concept when the requirement itself changed.
+concept when the requirement itself changed. The sweeper refuses a
+seed that binds a structural check it does not implement (exit 2)
+rather than dropping the rule and reporting over the rest.
 
 ## Run pyQuARC and attest the receipt
 
