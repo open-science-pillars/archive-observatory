@@ -281,3 +281,219 @@ Closest call: Finding 2, which rides on a pre-existing WARN in
 load_rules rather than on any line this PR wrote, and which I block on
 only because this PR is what makes that WARN the sole disclosure
 between a green gate and an unrun MUST rule.
+
+---
+
+# Red-team verdict: PR 10 (requirements seed check), round 2
+
+VERDICT: APPROVE
+
+The fix commit is 5f893d2 (b236fd8 amended for its sign-off line; git
+diff b236fd8 5f893d2 is empty). I replayed both round 1 attacks
+against it on copies of the esdis bundle and the seed, and both are
+now caught in the file under review and, for the second, in the
+sweeper as well. The three non-blocking notes the builder picked up
+are closed. The gates are green by exit code. What remains is listed
+under notes; none of it is a hollow green, none of it was introduced
+by the fix, and none of it was in round 1's fix direction.
+
+## Finding 1 (R2): closed
+
+Reproduced on copies of ../nasa-daac-knowledge/knowledge/esdis (clone
+at fbb0797; requirements/ unchanged since 9224fe5, the commit round 1
+compared against), each mutation on its own copy, the concept body
+untouched each time, seed_check run with --concepts pointed at the
+copy:
+
+- temporal-extent.md with `status: deprecated` and `superseded_by:
+  requirements/temporal-extent-v2.md`, rule still in the seed: one
+  DISAGREE line naming req-temporal-extent, the field status, the
+  concept path, and the successor; exit 1.
+- The same copy with req-temporal-extent removed from a copy of the
+  seed: PASS, 7 rules against 8 concepts, 0 disagreements, exit 0.
+  The deprecated concept is not reported as an orphan.
+- doi-registered.md with `disputed: <issue URL>`, seed not mirrored:
+  DISAGREE req-doi, field disputed, seed None and the concept's URL,
+  exit 1. Seed mirrored with the same URL: PASS, exit 0. Seed
+  mirrored with a different URL: DISAGREE with both URLs printed,
+  exit 1. `disputed` on the seed rule against the unmodified bundle:
+  DISAGREE, seed URL and concept None, exit 1.
+- spatial-extent.md with `status: retired` and links-resolve.md with
+  the legacy `status: superseded`: two DISAGREE lines, each naming the
+  rule, the field, the value found, and the three values OKF defines;
+  exit 1. A concept with the status key deleted is reported the same
+  way; that is correct here, since SPEC section 5.1 makes an explicit
+  status an org requirement even though OKF's own default is stable.
+- temporal-extent.md with `stale_after: 2020-01-01`: one STALE line
+  naming the rule, the path, the date and the days elapsed; summary
+  reads 1 stale; exit 0. The round 1 mutation verbatim (deprecated
+  plus that date) produces the DISAGREE and the STALE line together,
+  exit 1. `stale_after: soon` is a DISAGREE (not a date), exit 1.
+- All eight concepts at `status: stable`: PASS, exit 0. The live
+  bundle, all drafts: PASS, exit 0.
+
+Each disagreement prints the rule id, the field, and the values on
+both sides where both sides have one (status and stale_after exist
+only on the concept, and the line prints that value). The selftest
+pins one scenario per field: deprecated with a live rule, deprecated
+with no rule and no orphan report, stable, an undefined status,
+disputed unmirrored, disputed mirrored, disputed on the rule only,
+stale_after passed, ahead, and not a date. R2's gap as stated in
+round 1, a gate that could not hear the concept withdraw, is closed
+by code in compare().
+
+## Finding 2 (R12, with R11 and R2): closed
+
+Reproduced two ways. First, abstract-informative.md's `Structural:`
+id and the seed's matching check.id both renamed to version-present:
+seed_check reports DISAGREE req-abstract, check.id 'version-present'
+named by the concept but not implemented, with the five implemented
+ids listed, exit 1. sweep_providers --selftest on that seed prints
+one refusal naming the rule, the id, and the implemented set, exit 2,
+no report. sweep_providers --files on a record that passes every
+implemented check, with --fail-on-must and --out-dir: exit 2, nothing
+written. A rule that never ran cannot be a green under --fail-on-must
+because the seed never loads. Second, round 1's exact shape, a ninth
+concept version-present.md written from the concept template plus a
+ninth rule copied from it field for field: seed_check FAIL with the
+same disagreement, exit 1; the sweeper selftest refuses, exit 2.
+
+The pin: on a scratch copy of tools/sweep_providers.py I put the old
+WARN-and-continue back in place of the raise and ran its selftest; it
+prints the WARN and ends "selftest: FAIL", exit 1. So the gates step
+in ci.yml now fails if the refusal is ever removed, and since
+load_rules runs before the --selftest branch, the same step fails the
+day the live seed binds an id the sweeper lacks. load_rules has no
+caller outside the sweeper (grep), so the raise changes no other
+tool's behaviour, and main() turns it into exit 2 with the message.
+R12's row now names rules beside records, which matches the code.
+
+## The stale_after choice: a STALE line, counted, exit 0
+
+I read the ground the builder cites. marketplace/docs/SPECIFICATION.md
+section 5.6 defines staleness as a date comparison, describes what
+follows as a steward sweep of the concept, and in its migration table
+maps the old `stale` status to `status: stable` plus `stale_after`,
+so a stale concept is by construction still a stable one; withdrawal
+is a different form (`deprecated`), and that form is a disagreement
+here. nasa-daac-knowledge/tools/check_okf_v02.py files a passed date
+as W5, a warning that fails only under --strict, and that repository
+has no CI workflow invoking the checker at all. The ground holds, and
+the choice is one of the two round 1 offered. It is not silence: the
+line is printed and the summary counts it.
+
+One boundary: the spec and the checker both call a concept stale once
+today >= stale_after, and seed_check uses stale_after < today, so on
+the day itself seed_check is quiet while the checker on the same copy
+prints W5 (verified with today's date on a copy). One day, warning
+class either way; noted below, not blocking.
+
+## What was verified
+
+Every gate command ci.yml runs, from the repository root, exit codes
+read directly and no pipe: sweep_providers selftest 0; quarc_attest
+selftest 0; make_badge selftest 0; fitness_attest selftest 0;
+seed_check selftest 0 (32 scenarios: 29 through compare() with an
+injected structural set and a fixed date, 3 through run() with the
+sweeper's real STRUCTURAL); live seed_check against
+../nasa-daac-knowledge/knowledge/esdis 0 (8 rules, 8 concepts, 0
+disagreements, 0 stale); the R10 grep exactly as ci.yml writes it 0,
+and grep's own exit read separately as 1 (no match) rather than the
+2 the negation would also turn green.
+
+Also verified: the sweeper's raise reaches no other tool; the sweep
+workflow runs the sweeper under the default failing shell with no
+masking, so exit 2 stops it; the seed_check import of sweep_providers
+loads only stdlib modules and pyyaml (already pinned by seed_check's
+own block), makes no network call at import (socket.connect and
+urlopen were patched to raise during the import, and neither fired),
+and the sys.path insert shadows no stdlib name since tools/ holds
+five files, none a stdlib module name. No dependency was added.
+Regression pass on the copy for round 1's live scenarios: statement
+prefix, SHOULD against a MUST concept, concept renamed upstream,
+unreadable concept, an extra concept with unterminated frontmatter
+(reported as an orphan, not treated as deprecated), a pyquarc id
+from another concept's paragraph, a concept whose type changed; each
+still produces exactly its disagreement. Path normalization: a ninth
+rule naming requirements/./related-urls-present.md,
+./requirements/related-urls-present.md, or
+requirements/../requirements/related-urls-present.md is reported as
+already the concept of req-related-urls, exit 1. A rule entry that is
+a string, a rules key that is not a list, and an empty seed each exit
+2 with one message and no traceback. `persist-credentials: false` is
+on the sibling checkout at ci.yml line 42. No em or en dash in any
+changed file; no build-scaffolding label in any added line; the
+STALE and refusal messages and the USING.md paragraph read as this
+repository's obligations, not as rulings on the knowledge repository
+(R7).
+
+## Register walk, rows the fix touches
+
+- R2: Finding 1 closed; the gate now reads status, superseded_by,
+  disputed and stale_after and acts on each as described above. The
+  USING.md sentences added by the fix are each true of the code I
+  ran.
+- R5: the new import executes module-level code of a file in this
+  repository only; nothing from the sibling tree is imported or
+  executed, and concept values in the new DISAGREE lines are
+  repr-quoted as before.
+- R7: new user-facing text checked; see above.
+- R10: the sibling checkout keeps no token in its config; the grep
+  passes.
+- R11: the refusal is pinned by the sweeper's own selftest in the
+  gates step, demonstrated by regressing a copy; the new seed_check
+  scenarios run in the same step.
+- R12: Finding 2 closed on both paths; the row's wording now covers
+  rules, and the code matches the row.
+
+## Notes, none blocking
+
+- The mirrored `disputed` key is a declaration, not yet a hold-out.
+  Nothing in tools/ outside seed_check reads `disputed` (grep), so a
+  rule carrying it is swept, tallied, printed in the aggregate, and
+  counts toward --fail-on-must exactly as before. README.md and
+  docs/publication-policy.md promise that a disputed rule is held
+  out of publication until resolved; today that promise is
+  convention. Round 1's fix direction asked for the mirror and said
+  the sweeper "can then" hold the rule out, so this is not a
+  reopening; it is the next line to write, and R12's shape applies
+  (skip the rule, count and name the skip in the artifact, refuse a
+  green under --fail-on-must over it). Exposure today is nil: no
+  concept is disputed and no optin/ directory exists.
+- The boundary day described above: seed_check reports a concept
+  stale one day after the spec and the bundle checker do. Changing
+  `<` to `<=` in compare() aligns the three.
+- The summary line counts every requirements/*.md as a concept, so a
+  correct run over a bundle with one deprecated concept reads "7
+  rules against 8 concepts, 0 disagreements"; a deprecated count
+  beside the stale count would make the line self-consistent.
+- The scheduled sweep (sweep.yml) does not run seed_check before it
+  sweeps, so between a concept withdrawing upstream and the next push
+  to this repository, the monthly run would use the seed as it stands.
+  The CI red on the next push is the only signal. Pre-existing, and
+  moot until an opt-in exists.
+- The R10 step's `!` negation turns a grep error (exit 2, for example
+  an unreadable directory) into a pass as well as a no-match. I read
+  grep's own exit code. Pre-existing and not touched by this PR.
+- A STALE line inside a green job is visible only to someone reading
+  the log. Three concepts carry stale_after 2026-11-30 and will cross
+  it in under three months with CI still green; if the steward wants
+  a nudge, a flag that promotes stale to exit 1, or a scheduled issue,
+  is the place, and neither belongs in this PR.
+
+## For the steward
+
+Both round 1 findings are closed by code in the files under review,
+each with a selftest scenario in the gates step, and I reproduced
+every attack round 1 described against the fixed tree rather than
+reading the diff for it. The stale_after choice is the one round 1
+offered as a printed warning, and the builder's stated ground for it
+is what the spec and the bundle checker actually say. Nothing in the
+notes is a green over unexamined content; the largest open item, the
+sweeper's indifference to the `disputed` key, predates this PR and is
+worth a follow-up issue rather than a third round the contract does
+not allow. Closest call: whether to treat that indifference as a
+reopening of Finding 1, and I do not, because round 1 asked for the
+gate to hear the dispute and it now does, while holding the rule out
+of a sweep is a change to a different tool that round 1 named as the
+next step rather than as the fix.
