@@ -10,5 +10,5 @@
 dependencies:
   - name: nasa-daac-knowledge
     repository: open-science-pillars/nasa-daac-knowledge
-    version: ">=2026.9.2"
-    purpose: the esdis requirement concepts (the authority for the rules seed) and tools/check_script_deps.py
+    version: ">=2026.9.3"
+    purpose: the esdis requirement concepts (the authority for the rules seed), tools/check_script_deps.py and tools/check_prose.py
