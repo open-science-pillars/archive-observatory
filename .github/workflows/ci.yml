@@ -70,3 +70,11 @@ jobs:
         # `uv run tools/<script>` resolves on a fresh fork with nothing
         # installed but uv, which is the forkability R10 protects.
         run: uv run nasa-daac-knowledge/tools/check_script_deps.py tools
+      - name: Wording rules (specification rules by name, no program bookkeeping, no dashes)
+        # The knowledge repository's wording check, from the same release
+        # checkout, over this tree: a specification rule is cited by its
+        # name and never by a section number, program bookkeeping stays
+        # out of what a reader meets, and no em or en dash. reviews/ is
+        # excluded because a verdict quotes the text it judged, dated,
+        # the way a bundle log does. One command, no pipe (R11).
+        run: uv run nasa-daac-knowledge/tools/check_prose.py . --exclude 'reviews/*'

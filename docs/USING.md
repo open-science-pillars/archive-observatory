@@ -28,6 +28,19 @@ the same way CI does:
     uv run tools/seed_check.py --selftest
     uv run tools/resolve_release.py --selftest
 
+CI also runs two checks that live in the knowledge repository, from
+the release checkout the seed job makes (register R13): every tool's
+PEP 723 header must cover its imports (`check_script_deps.py`), and
+the prose must follow the wording rules (`check_prose.py`: a
+specification rule is cited by its name and the document, never by a
+section number; program bookkeeping stays out of what a reader meets;
+no em or en dash). The verdicts in reviews/ are dated records and are
+excluded from the wording check. Both run the same way from a sibling
+clone:
+
+    uv run ../nasa-daac-knowledge/tools/check_script_deps.py tools
+    uv run ../nasa-daac-knowledge/tools/check_prose.py . --exclude 'reviews/*'
+
 ## What has to be registered, and what does not
 
 The short answer for a data producer: **you can check metadata that
