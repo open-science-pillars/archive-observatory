@@ -36,8 +36,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
+        # Pinned to a release tag of the knowledge repository, never a
+        # branch (red-team R13): both steps below execute code from
+        # this checkout, so what runs here is decided by a commit in
+        # this repository, not by whatever lands upstream. The pin
+        # moves in a PR of its own that names the release and re-runs
+        # the seed check against it. nasa-daac-knowledge--v2026.9.2 is
+        # commit c6827f6.
         with:
           repository: open-science-pillars/nasa-daac-knowledge
+          ref: nasa-daac-knowledge--v2026.9.2
           path: nasa-daac-knowledge
           persist-credentials: false
       - uses: astral-sh/setup-uv@v4
