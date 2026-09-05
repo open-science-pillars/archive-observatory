@@ -76,10 +76,13 @@ jobs:
         # name and never by a section number, program bookkeeping stays
         # out of what a reader meets, and no em or en dash. reviews/ is
         # excluded because a verdict quotes the text it judged, dated,
-        # the way a bundle log does. The tool's selftest runs first, so
+        # the way a bundle log does, and so is the knowledge checkout
+        # itself, which sits inside this tree in CI and is gated by its
+        # own release; this step measures this repository's prose and
+        # nothing else. The tool's selftest runs first, so
         # a release whose check no longer catches what it claims fails
         # here before it is trusted over this tree; no pipe on either
         # line, each exit read by the step (R11).
         run: |
           uv run nasa-daac-knowledge/tools/check_prose.py --selftest
-          uv run nasa-daac-knowledge/tools/check_prose.py . --exclude 'reviews/*'
+          uv run nasa-daac-knowledge/tools/check_prose.py . --exclude 'reviews/*' --exclude 'nasa-daac-knowledge/*'
