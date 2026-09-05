@@ -13,6 +13,7 @@ jobs:
           uv run tools/make_badge.py --selftest
           uv run tools/fitness_attest.py --selftest
           uv run tools/seed_check.py --selftest
+          uv run tools/resolve_release.py --selftest
       - name: Credential-free invariant (red-team R10)
         # Tree-wide, all file types, all register patterns including
         # token. Excluded: this file and RED-TEAM.md, whose pattern
@@ -35,20 +36,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - name: Resolve the declared knowledge floor to its highest release
+        # data/dependencies.yaml declares a version floor the way the
+        # marketplace plugins do; the resolver lists the knowledge
+        # repository's release tags (read-only, credential-free) and
+        # picks the highest one that satisfies the floor, writing ref=
+        # and commit= to the step outputs itself so no shell
+        # substitution can swallow a failing exit (red-team R11).
+        id: knowledge
+        run: |
+          uv run tools/resolve_release.py data/dependencies.yaml \
+            nasa-daac-knowledge --github-output "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
-        # Pinned to a release tag of the knowledge repository, never a
-        # branch (red-team R13): both steps below execute code from
-        # this checkout, so what runs here is decided by a commit in
-        # this repository, not by whatever lands upstream. The pin
-        # moves in a PR of its own that names the release and re-runs
-        # the seed check against it. nasa-daac-knowledge--v2026.9.2 is
-        # commit c6827f6.
+        # A release tag of the knowledge repository, never a branch
+        # (red-team R13): both steps below execute code from this
+        # checkout, so what runs here is a signed, tagged release chosen
+        # by the floor this repository declares. A new release upstream
+        # is measured against on the next run with no commit here; a
+        # release that raises the floor raises it in data/dependencies.yaml.
         with:
           repository: open-science-pillars/nasa-daac-knowledge
-          ref: nasa-daac-knowledge--v2026.9.2
+          ref: ${{ steps.knowledge.outputs.ref }}
           path: nasa-daac-knowledge
           persist-credentials: false
-      - uses: astral-sh/setup-uv@v4
       - name: Seed agrees with the esdis concepts (red-team R2)
         run: |
           uv run tools/seed_check.py data/requirements-seed.yaml \

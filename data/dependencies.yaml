@@ -1,0 +1,14 @@
+# What this repository builds on, declared the way the marketplace
+# plugins declare their dependencies: a name and a version floor, never
+# a pinned commit. CI resolves the floor to the highest tagged release
+# of the named repository that satisfies it (tools/resolve_release.py)
+# and checks that release out, so a new knowledge release is measured
+# against on its next run with no commit here, and a release that
+# raises the floor raises it in this file. Tags follow the marketplace
+# convention {name}--v{version}; the knowledge repository versions by
+# calendar (year.month.patch).
+dependencies:
+  - name: nasa-daac-knowledge
+    repository: open-science-pillars/nasa-daac-knowledge
+    version: ">=2026.9.2"
+    purpose: the esdis requirement concepts (the authority for the rules seed) and tools/check_script_deps.py

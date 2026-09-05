@@ -52,8 +52,10 @@ tools/quarc_attest.py        pinned pyQuARC runner, receipts, attester
 tools/make_badge.py          opt-in badge from an attested receipt
 tools/fitness_attest.py      can-I-use-X-for-Y verdicts from signed domains
 tools/seed_check.py          holds the rules seed to the esdis concepts
+tools/resolve_release.py     declared version floor to highest release tag
 data/requirements-seed.yaml  MUST/SHOULD rules with provenance gating
 data/claim-classes.yaml      the governed claim-class vocabulary
+data/dependencies.yaml       what this repo builds on: name and version floor
 docs/USING.md                the operator's guide (start here to run things)
 docs/publication-policy.md   the publication policy, binding
 docs/policy-log.md           delivery windows, event metadata only

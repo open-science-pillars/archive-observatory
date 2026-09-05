@@ -16,6 +16,7 @@ repository root.
 | tools/make_badge.py | Shields badge from an attested receipt; strictly opt-in | yes |
 | tools/fitness_attest.py | Can-I-use-X-for-Y verdicts against signed validity domains | yes |
 | tools/seed_check.py | Holds the rules seed to the esdis requirement concepts, field by field | yes |
+| tools/resolve_release.py | Resolves the version floor declared in data/dependencies.yaml to the highest release tag of the knowledge repository, for CI's checkout | yes (public tag list) |
 
 Selftests for every tool run in CI on every push; run them yourself
 the same way CI does:
@@ -25,6 +26,7 @@ the same way CI does:
     uv run tools/make_badge.py --selftest
     uv run tools/fitness_attest.py --selftest
     uv run tools/seed_check.py --selftest
+    uv run tools/resolve_release.py --selftest
 
 ## What has to be registered, and what does not
 
@@ -166,9 +168,13 @@ same disputed key on its rule, a passed stale_after is printed as a
 STALE line and counted, and a cmr-structural id must be one
 tools/sweep_providers.py implements, so a rule the seed and the
 concept agree on is a rule that runs (register R12). CI checks the
-public knowledge repository out beside this one and runs the
-comparison on every push; locally it reads a sibling clone by
-default, or any bundle root you name:
+public knowledge repository out beside this one at a release tag,
+never a branch (register R13): data/dependencies.yaml declares the
+version floor this repository needs, and tools/resolve_release.py
+resolves it to the highest release that satisfies it, so a new
+knowledge release is measured against on the next run and a release
+that raises the floor raises it in that file. Locally the check reads
+a sibling clone by default, or any bundle root you name:
 
     uv run tools/seed_check.py data/requirements-seed.yaml \
       --concepts ../nasa-daac-knowledge/knowledge/esdis
