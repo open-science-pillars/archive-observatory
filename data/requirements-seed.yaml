@@ -4,7 +4,7 @@
 #   SHOULD = ARC framework best practice, attributed to ARC, never
 #            presented as a mandate
 # check.binding: cmr-structural (sweep_providers.py) or pyquarc
-# (quarc_attest.py; check ids mapped during the SET co-build).
+# (quarc_attest.py; check ids mapped during the ASSET co-build).
 #
 # The esdis requirement concepts (nasa-daac-knowledge, knowledge/esdis/
 # requirements/) are the authority for every field below. Each rule

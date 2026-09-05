@@ -6,7 +6,8 @@ output. Per-provider detail reports are delivered privately to that
 provider with a 30-day window before any public reference, and
 per-collection public reporting or a badge exists only where the
 provider has opted in, in writing, recorded in the observatory repo.
-PO.DAAC opts in first through the SET co-build and serves as the
+PO.DAAC opts in first through the co-build with its Application Support
+and Science Enabling Team (ASSET) and serves as the
 exemplar. Rule disagreements are never adjudicated here: they route
 upstream (NASA-IMPACT for pyQuARC rules, the source document's owner
 for MUST rules) with the finding held out of publication until
