@@ -45,3 +45,9 @@ jobs:
         run: |
           uv run tools/seed_check.py data/requirements-seed.yaml \
             --concepts nasa-daac-knowledge/knowledge/esdis
+      - name: Every script declares the dependencies it imports
+        # The knowledge repository's checker, run from the same checkout:
+        # each tool's PEP 723 header must cover its imports, so
+        # `uv run tools/<script>` resolves on a fresh fork with nothing
+        # installed but uv, which is the forkability R10 protects.
+        run: uv run nasa-daac-knowledge/tools/check_script_deps.py tools
