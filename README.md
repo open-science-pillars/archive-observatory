@@ -72,4 +72,5 @@ only; the PEP 723 blocks carry the pins).
 Apache 2.0, DCO sign-off on every commit (git commit -s). Ordinary
 changes take one maintainer review plus the red-team verdict file.
 Governance follows the org defaults (.osp/governance.yaml); maintainer
-status is interim until the Science Enabling Team co-build.
+status is interim until the co-build with the Application Support and
+Science Enabling Team (ASSET).
