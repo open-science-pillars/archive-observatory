@@ -7,6 +7,16 @@ by Open Science Pillars, a community open-source project; not a NASA,
 JPL, or PO.DAAC product. The frame is a mirror held up with the
 archives, not an audit performed on them.
 
+## Place in the organization
+
+A tooling repository (`.osp/repository.yaml`), classified on its own
+terms rather than by Earth science sphere: its readers are data
+engineers and archive operators, the architecture document's second
+audience, and what it holds is PROVE instruments (deterministic checks
+with receipts) for their records. Its rules are KNOW, authored as
+requirement concepts in the ESDIS bundle and owned by that bundle's
+stewards; the observatory follows them.
+
 ## Properties, not preferences
 
 - **Credential-free by construction.** Everything here runs against
