@@ -1,0 +1,14 @@
+# Canonical classification of this repository (ADR A, docs/decisions in the
+# marketplace repository). GitHub topics, the sphere view and every runtime
+# manifest are rendered from this file, never the other way round.
+schema_version: 1
+repository:
+  name: archive-observatory
+  kind: tooling
+  status: available
+  audience: 'Data engineers and archive operators: metadata compliance instruments, classified on their
+    own terms rather than by sphere'
+classification:
+  spheres: []
+  primary_sphere: null
+  discipline: null
