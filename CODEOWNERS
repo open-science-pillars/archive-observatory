@@ -1,4 +1,5 @@
-# Interim stewardship (kit 11 Session 1). The SET engineer entries
-# replace this line at the Session 2 co-build, when their names land
-# with their first signatures.
-* @PaulMRamirez
+# Ownership by team (ADR A, decision 10; the registry is osp/teams.yaml in
+# build-kit). The observatory serves archive engineers and is classified on
+# its own terms; the ASSET engineer entries join the team at the co-build,
+# when their names land with their first signatures.
+* @open-science-pillars/foundation-maintainers
